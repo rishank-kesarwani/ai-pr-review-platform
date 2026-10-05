@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI PR Review Extension Settings</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      padding: 30px;
+      max-width: 540px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 20px;
+      color: #818cf8;
+    }
+    .field {
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #c9d1d9;
+    }
+    input {
+      background: #161b22;
+      border: 1px solid #30363d;
+      color: #f0f6fc;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    input:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+    button {
+      background: #238636;
+      color: #ffffff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #2ea043;
+    }
+    .status-msg {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #3fb950;
+    }
+  </style>
+</head>
+<body>
+  <h1>⚙️ AI PR Review Settings</h1>
+
+  <div class="field">
+    <label for="backendUrl">Backend API Base URL:</label>
+    <input type="text" id="backendUrl" placeholder="http://localhost:3000 or https://api.pr-review.com">
+  </div>
+
+  <div class="field">
+    <label for="frontendUrl">Web Dashboard URL:</label>
+    <input type="text" id="frontendUrl" placeholder="http://localhost:3001 or https://pr-review.rishankkesharwani.com">
+  </div>
+
+  <div class="field">
+    <label for="authToken">JWT Access Token (Optional):</label>
+    <input type="password" id="authToken" placeholder="Paste user JWT access token here">
+  </div>
+
+  <button id="saveBtn">Save Settings</button>
+  <div id="statusMsg" class="status-msg"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

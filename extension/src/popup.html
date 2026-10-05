@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI PR Review</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="extension-container">
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">AI PR Review</span>
+      </div>
+      <a href="options.html" target="_blank" class="settings-btn" title="Settings">⚙️</a>
+    </header>
+
+    <main class="content">
+      <!-- Active PR Context Card -->
+      <div id="pr-context-card" class="card">
+        <div class="card-label">CURRENT PULL REQUEST</div>
+        <div id="pr-info" class="pr-title">Detecting active GitHub PR...</div>
+        <div id="pr-repo" class="pr-subtitle"></div>
+      </div>
+
+      <!-- Action Area -->
+      <button id="trigger-review-btn" class="primary-btn">
+        <span>✨ Trigger AI PR Review</span>
+      </button>
+
+      <!-- Review Progress & Status -->
+      <div id="review-status-section" class="card hidden">
+        <div class="status-header">
+          <span class="card-label">REVIEW STATUS</span>
+          <span id="status-badge" class="badge">QUEUED</span>
+        </div>
+
+        <div class="progress-bar-container">
+          <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
+        </div>
+        <div id="stage-text" class="stage-text">Initializing review pipeline...</div>
+
+        <!-- Severity Metric Pills -->
+        <div id="severity-metrics" class="metrics-grid hidden">
+          <div class="metric-pill critical">
+            <span class="count" id="count-critical">0</span>
+            <span class="label">Critical</span>
+          </div>
+          <div class="metric-pill high">
+            <span class="count" id="count-high">0</span>
+            <span class="label">High</span>
+          </div>
+          <div class="metric-pill medium">
+            <span class="count" id="count-medium">0</span>
+            <span class="label">Medium</span>
+          </div>
+          <div class="metric-pill low">
+            <span class="count" id="count-low">0</span>
+            <span class="label">Low</span>
+          </div>
+        </div>
+
+        <!-- Top Findings Preview -->
+        <div id="findings-preview-list" class="findings-list hidden">
+          <div class="findings-header">TOP FINDINGS</div>
+          <div id="findings-container"></div>
+        </div>
+
+        <a id="dashboard-link" href="#" target="_blank" class="secondary-btn">
+          <span>Open Full Dashboard Report ↗</span>
+        </a>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <span>AI-Powered Autonomous Code Intelligence</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

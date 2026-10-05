@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "AI PR Review Assistant",
+  "version": "1.0.0",
+  "description": "Instant AI-powered code reviews, AST static analysis, and security vulnerability detection directly on GitHub Pull Requests.",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://github.com/*",
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*",
+    "https://*.rishankkesharwani.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://github.com/*/*/pull/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "AI PR Review"
+  },
+  "options_page": "options.html"
+}

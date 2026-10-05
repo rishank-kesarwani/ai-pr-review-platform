@@ -1,0 +1,18 @@
+{
+  "name": "ai-pr-review-platform",
+  "version": "1.0.0",
+  "description": "Production-grade AI GitHub Pull Request Review Platform",
+  "author": "Rishank Kesarwani",
+  "license": "MIT",
+  "scripts": {
+    "build": "npm run build:backend && npm run build:frontend && npm run build:extension",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "build:extension": "cd extension && npm run build",
+    "test": "npm run test:backend",
+    "test:backend": "cd backend && npm test",
+    "start:backend": "cd backend && npm run start:dev",
+    "start:frontend": "cd frontend && npm run dev",
+    "start:prod": "cd backend && npm run start:prod"
+  }
+}
