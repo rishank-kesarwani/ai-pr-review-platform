@@ -52,3 +52,12 @@ export enum AnalyzerType {
   SECURITY = 'SECURITY',
   CUSTOM = 'CUSTOM',
 }
+
+export enum RegressionStatus {
+  NOT_RUN = 'NOT_RUN',
+  PASS = 'PASS',
+  WARN = 'WARN',
+  FAIL = 'FAIL',
+  ERROR = 'ERROR',
+}
+

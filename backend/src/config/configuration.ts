@@ -31,6 +31,16 @@ export default registerAs('app', () => ({
     model: process.env.AI_MODEL || 'gemini-1.5-pro',
   },
 
+  modelRegression: {
+    url: process.env.MODEL_REGRESSION_URL || 'http://localhost:5000',
+    apiKey: process.env.MODEL_REGRESSION_API_KEY || 'dev-model-regression-api-key',
+    timeoutMs: parseInt(process.env.MODEL_REGRESSION_TIMEOUT_MS || '10000', 10),
+    checkMode: process.env.REGRESSION_CHECK_MODE || 'manual', // manual, review, ci, critical-only
+    blocking: process.env.REGRESSION_BLOCKING === 'true',
+    defaultDatasetId: process.env.REGRESSION_DEFAULT_DATASET || 'pr-review-evaluation',
+    defaultBaselineId: process.env.REGRESSION_DEFAULT_BASELINE || 'pr-review-baseline-v1',
+  },
+
   notificationService: {
     url: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:4001',
     apiKey: process.env.NOTIFICATION_PR_REVIEW_API_KEY || 'dev-notification-pr-review-api-key',

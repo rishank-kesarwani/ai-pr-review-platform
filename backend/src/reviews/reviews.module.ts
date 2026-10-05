@@ -10,6 +10,7 @@ import { AnalyzersModule } from '../analyzers/analyzers.module';
 import { AiModule } from '../ai/ai.module';
 import { ArbitrationModule } from '../arbitration/arbitration.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { RegressionModule } from '../regression/regression.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     AiModule,
     ArbitrationModule,
     NotificationsModule,
+    RegressionModule,
     BullModule.registerQueue({
       name: 'pr-review',
     }),

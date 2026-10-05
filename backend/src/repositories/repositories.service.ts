@@ -40,6 +40,11 @@ export class RepositoriesService {
         customRules: [],
         ignoredFiles: ['dist/**', 'node_modules/**', '*.lock'],
         maxFilesPerReview: 50,
+        regressionEnabled: false,
+        regressionBlocking: false,
+        regressionDataset: 'pr-review-evaluation',
+        regressionBaseline: 'pr-review-baseline-v1',
+        regressionPolicy: 'manual',
       },
     };
   }

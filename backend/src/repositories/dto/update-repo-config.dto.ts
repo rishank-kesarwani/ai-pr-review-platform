@@ -44,4 +44,29 @@ export class UpdateRepoConfigDto {
   @Min(1)
   @Max(200)
   maxFilesPerReview?: number;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  regressionEnabled?: boolean;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  regressionBlocking?: boolean;
+
+  @ApiPropertyOptional({ example: 'pr-review-evaluation' })
+  @IsOptional()
+  @IsString()
+  regressionDataset?: string;
+
+  @ApiPropertyOptional({ example: 'pr-review-baseline-v1' })
+  @IsOptional()
+  @IsString()
+  regressionBaseline?: string;
+
+  @ApiPropertyOptional({ example: 'manual' })
+  @IsOptional()
+  @IsString()
+  regressionPolicy?: string;
 }

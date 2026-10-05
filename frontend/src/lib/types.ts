@@ -38,6 +38,30 @@ export interface SeverityCounts {
   total: number;
 }
 
+export type RegressionStatus = 'NOT_RUN' | 'PASS' | 'WARN' | 'FAIL' | 'ERROR';
+
+export interface RegressionMetricComparison {
+  name: string;
+  baseline: number | string;
+  candidate: number | string;
+  delta?: number;
+  unit?: string;
+  status: 'PASS' | 'WARN' | 'FAIL';
+  threshold?: number;
+}
+
+export interface RegressionSummary {
+  status: RegressionStatus;
+  runId?: string;
+  passed?: number;
+  warnings?: number;
+  failed?: number;
+  metrics?: Record<string, { baseline: number; candidate: number; delta: number; status: string }>;
+  regressions?: Array<{ metric: string; baseline: number; candidate: number; delta: number; threshold: number; message: string }>;
+  timestamp?: string;
+  error?: string;
+}
+
 export interface PullRequestReview {
   _id: string;
   repositoryId?: string;
@@ -51,6 +75,9 @@ export interface PullRequestReview {
   headBranch: string;
   commitSha: string;
   status: ReviewStatus;
+  regressionStatus?: RegressionStatus;
+  regressionRunId?: string;
+  regressionSummary?: RegressionSummary;
   progressPercent: number;
   currentStage?: string;
   summary?: string;
@@ -107,6 +134,11 @@ export interface RepositoryItem {
     customRules: string[];
     ignoredFiles: string[];
     maxFilesPerReview: number;
+    regressionEnabled?: boolean;
+    regressionBlocking?: boolean;
+    regressionDataset?: string;
+    regressionBaseline?: string;
+    regressionPolicy?: string;
   };
 }
 
@@ -118,3 +150,4 @@ export interface UserProfile {
   avatarUrl?: string;
   roles: string[];
 }
+

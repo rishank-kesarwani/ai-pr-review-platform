@@ -227,4 +227,54 @@ export class ReviewsService {
       triggeredBy: 'RETRY',
     });
   }
+
+  async getReviewRegression(id: string) {
+    const review: any = await this.getReviewById(id);
+    return {
+      reviewId: review._id,
+      status: review.regressionStatus || 'NOT_RUN',
+      runId: review.regressionRunId,
+      summary: {
+        passed: review.regressionSummary?.passed || 0,
+        warnings: review.regressionSummary?.warnings || 0,
+        failed: review.regressionSummary?.failed || 0,
+      },
+      metrics: review.regressionSummary?.metrics || {},
+      regressions: review.regressionSummary?.regressions || [],
+      evaluatedAt: review.regressionSummary?.evaluatedAt || review.updatedAt || new Date(),
+    };
+  }
+
+  async triggerReviewRegression(id: string) {
+    const review = await this.getReviewById(id);
+    const repoDoc = review.repositoryId ? await this.repoModel.findById(review.repositoryId) : null;
+
+    // Trigger on-demand regression check
+    const regressionResult = await this.orchestrator['modelRegressionService'].checkRegression({
+      reviewId: review._id.toString(),
+      repository: review.repoFullName,
+      pullRequest: review.pullRequestNumber,
+      commitSha: review.commitSha,
+    });
+
+    const updated = await this.reviewModel.findByIdAndUpdate(
+      id,
+      {
+        regressionStatus: regressionResult.status,
+        regressionRunId: regressionResult.runId,
+        regressionSummary: {
+          passed: regressionResult.summary?.passed || 0,
+          warnings: regressionResult.summary?.warnings || 0,
+          failed: regressionResult.summary?.failed || 0,
+          metrics: regressionResult.metrics,
+          regressions: regressionResult.regressions,
+          evaluatedAt: new Date(),
+        },
+      },
+      { new: true },
+    );
+
+    return this.getReviewRegression(id);
+  }
 }
+

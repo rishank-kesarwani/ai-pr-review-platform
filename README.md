@@ -17,34 +17,35 @@
 9. [GitHub Webhook Flow](#9-github-webhook-flow)
 10. [PR Review Pipeline](#10-pr-review-pipeline)
 11. [AI Platform Integration](#11-ai-platform-integration)
-12. [Notification Service Integration](#12-notification-service-integration)
-13. [Redis Architecture](#13-redis-architecture)
-14. [BullMQ Distributed Queue Architecture](#14-bullmq-distributed-queue-architecture)
-15. [MongoDB Schema & Index Design](#15-mongodb-schema--index-design)
-16. [Authentication & Optional Auth Architecture](#16-authentication--optional-auth-architecture)
-17. [GitHub App Architecture & Permissions](#17-github-app-architecture--permissions)
-18. [Chrome Extension Architecture (Manifest V3)](#18-chrome-extension-architecture-manifest-v3)
-19. [Security Model & Protection Controls](#19-security-model--protection-controls)
-20. [AI Hallucination & Evidence Controls](#20-ai-hallucination--evidence-controls)
-21. [Finding Deduplication & Arbitration Engine](#21-finding-deduplication--arbitration-engine)
-22. [Idempotency & Replay Protection](#22-idempotency--replay-protection)
-23. [Retry Strategy & Resilience](#23-retry-strategy--resilience)
-24. [Rate Limiting & Throttling](#24-rate-limiting--throttling)
-25. [AI Cost & Context Window Controls](#25-ai-cost--context-window-controls)
-26. [Error Handling Strategy](#26-error-handling-strategy)
-27. [Observability & Structured Telemetry](#27-observability--structured-telemetry)
-28. [Deployment Architecture](#28-deployment-architecture)
-29. [Render Deployment (Backend)](#29-render-deployment-backend)
-30. [Vercel Deployment (Frontend)](#30-vercel-deployment-frontend)
-31. [Environment Variables](#31-environment-variables)
-32. [Local Development Setup](#32-local-development-setup)
-33. [GitHub App Setup Guide](#33-github-app-setup-guide)
-34. [Chrome Extension Setup Guide](#34-chrome-extension-setup-guide)
-35. [Testing Strategy](#35-testing-strategy)
-36. [CI/CD Pipeline](#36-cicd-pipeline)
-37. [REST API Documentation](#37-rest-api-documentation)
-38. [Known Limitations](#38-known-limitations)
-39. [Future Improvements](#39-future-improvements)
+12. [AI Model Regression Detection Platform Integration](#12-ai-model-regression-detection-platform-integration)
+13. [Notification Service Integration](#13-notification-service-integration)
+14. [Redis Architecture](#14-redis-architecture)
+15. [BullMQ Distributed Queue Architecture](#15-bullmq-distributed-queue-architecture)
+16. [MongoDB Schema & Index Design](#16-mongodb-schema--index-design)
+17. [Authentication & Optional Auth Architecture](#17-authentication--optional-auth-architecture)
+18. [GitHub App Architecture & Permissions](#18-github-app-architecture--permissions)
+19. [Chrome Extension Architecture (Manifest V3)](#19-chrome-extension-architecture-manifest-v3)
+20. [Security Model & Protection Controls](#20-security-model--protection-controls)
+21. [AI Hallucination & Evidence Controls](#21-ai-hallucination--evidence-controls)
+22. [Finding Deduplication & Arbitration Engine](#22-finding-deduplication--arbitration-engine)
+23. [Idempotency & Replay Protection](#23-idempotency--replay-protection)
+24. [Retry Strategy & Resilience](#24-retry-strategy--resilience)
+25. [Rate Limiting & Throttling](#25-rate-limiting--throttling)
+26. [AI Cost & Context Window Controls](#26-ai-cost--context-window-controls)
+27. [Error Handling Strategy](#27-error-handling-strategy)
+28. [Observability & Structured Telemetry](#28-observability--structured-telemetry)
+29. [Deployment Architecture](#29-deployment-architecture)
+30. [Render Deployment (Backend)](#30-render-deployment-backend)
+31. [Vercel Deployment (Frontend)](#31-vercel-deployment-frontend)
+32. [Environment Variables](#32-environment-variables)
+33. [Local Development Setup](#33-local-development-setup)
+34. [GitHub App Setup Guide](#34-github-app-setup-guide)
+35. [Chrome Extension Setup Guide](#35-chrome-extension-setup-guide)
+36. [Testing Strategy](#36-testing-strategy)
+37. [CI/CD Pipeline](#37-cicd-pipeline)
+38. [REST API Documentation](#38-rest-api-documentation)
+39. [Known Limitations](#39-known-limitations)
+40. [Future Improvements](#40-future-improvements)
 
 ---
 
@@ -52,7 +53,7 @@
 
 The **AI PR Review Platform** is an enterprise-grade automated code review solution designed to accelerate software delivery without sacrificing engineering rigor. Rather than relying on simple prompt-wrapped LLM wrappers or noisy static linters, the platform executes a synchronized, multi-phase review pipeline combining AST-based static analysis with deep context-aware LLM inspection.
 
-The system natively integrates with GitHub via GitHub App Webhooks and Check Runs, provides a Next.js web dashboard with interactive finding filtering, and ships with a Manifest V3 Chrome Extension allowing developers to trigger reviews directly from GitHub pull request pages.
+The system natively integrates with GitHub via GitHub App Webhooks and Check Runs, provides a Next.js web dashboard with interactive finding filtering, connects to the **AI Model Regression Detection Platform** for quality gate calibration, and ships with a Manifest V3 Chrome Extension allowing developers to trigger reviews directly from GitHub pull request pages.
 
 ---
 
@@ -61,7 +62,7 @@ The system natively integrates with GitHub via GitHub App Webhooks and Check Run
 Manual peer review is a critical bottleneck in modern engineering organizations:
 - **Reviewer Fatigue:** Senior engineers spend hours reviewing boilerplate, formatting, or missing error handlers instead of high-level system design.
 - **Surface-Level Linters:** Standard static linters only catch syntax or trivial style violations and miss subtle race conditions, resource leaks, or SQL/NoSQL injection vulnerabilities.
-- **LLM Hallucinations:** Naive LLM reviewers hallucinate non-existent files, suggest code that breaks surrounding abstractions, and flag stylistic nitpicks as critical bugs.
+- **LLM Hallucinations & Drift:** Naive LLM reviewers hallucinate non-existent files, suggest code that breaks surrounding abstractions, and silently regress in precision across prompt or model updates.
 - **Synchronous Failures:** Synchronous webhooks frequently time out against GitHub's 10-second limit on large pull requests.
 
 ---
@@ -71,8 +72,9 @@ Manual peer review is a critical bottleneck in modern engineering organizations:
 This platform bridges the gap between deterministic static analysis and semantic reasoning. It provides:
 1. **Zero-Wait Webhooks:** Immediate 200 OK webhook acknowledgements with asynchronous BullMQ background workers.
 2. **Arbitrated Findings:** Deduplicates findings across ESLint, TypeScript compiler checks, and AI review, downgrading speculative style suggestions while highlighting corroborated security threats.
-3. **Frictionless Public Access:** Permits guest developers to analyze public GitHub PRs instantly with zero mandatory login barriers.
-4. **Seamless Workflow Integration:** Operates directly inside GitHub Pull Request checks and in-browser with our Chrome extension.
+3. **Continuous AI Quality Assurance:** Evaluates candidate reviewer models/prompts against benchmark datasets via the Model Regression Detection Platform before promoting changes.
+4. **Frictionless Public Access:** Permits guest developers to analyze public GitHub PRs instantly with zero mandatory login barriers.
+5. **Seamless Workflow Integration:** Operates directly inside GitHub Pull Request checks and in-browser with our Chrome extension.
 
 ---
 
@@ -81,10 +83,11 @@ This platform bridges the gap between deterministic static analysis and semantic
 - ⚡ **Multi-Trigger Ingestion:** Automated reviews via GitHub App Webhooks, manual dashboard submission, or 1-click Chrome Extension activation.
 - 🛡️ **Sandboxed Static Analyzers:** Built-in `ESLintAnalyzer` and `TypeScriptAnalyzer` detecting dangerous `eval()`, unhandled floating promises, unsafe `any` casts, and XSS risks.
 - 🧠 **Centralized AI Platform Review:** Connects directly to the Portfolio AI Platform service for deep semantic vulnerability and logic error discovery.
+- 🎯 **Model Regression Detection Platform:** Independent quality gate verifying model precision, recall, latency, cost, and structured JSON output validity against calibrated baselines.
 - ⚖️ **Finding Arbitration & Deduplication:** SHA256-based fingerprint deduplication and severity calibration preventing false-positive noise.
-- 🚦 **Real-Time GitHub Checks & Annotations:** Automatically publishes GitHub Check Runs with pass/fail statuses and exact line-level annotations.
-- 📬 **Notification Service Integration:** Dispatches real-time webhooks/emails when critical vulnerabilities are discovered.
-- 📊 **Rich Next.js Dashboard:** Interactive code review viewer, severity filtering, category filters, and 1-click actionable fix copying.
+- 🚦 **Real-Time GitHub Checks & Annotations:** Automatically publishes GitHub Check Runs with pass/fail statuses, regression check badges, and exact line-level annotations.
+- 📬 **Notification Service Integration:** Dispatches real-time alerts when critical vulnerabilities or model regressions are detected.
+- 📊 **Rich Next.js Dashboard:** Interactive code review viewer, severity filtering, category filters, AI quality gate status cards, and 1-click actionable fix copying.
 - 🔌 **Manifest V3 Chrome Extension:** Floating GitHub review action, real-time stage progress polling, and severity pill badges.
 
 ---
@@ -95,8 +98,8 @@ The platform is structured as a modular TypeScript monorepo:
 
 ```
 ai-pr-review-platform/
-├── backend/          # NestJS 11 backend service & BullMQ worker
-├── frontend/         # Next.js 14 dashboard & review explorer
+├── backend/          # NestJS 11 backend service, BullMQ worker & regression client
+├── frontend/         # Next.js 14 dashboard, review explorer & quality gate UI
 ├── extension/        # Manifest V3 Chrome Extension
 ├── .github/          # GitHub Actions CI/CD workflows
 └── README.md         # Comprehensive engineering reference
@@ -118,6 +121,7 @@ graph TD
     Static[Static Analyzers ESLint/TS]
     AIPlatform[Shared AI Platform]
     Arbitrator[Arbitration & Deduplication]
+    Regression[Model Regression Platform]
     MongoDB[(MongoDB)]
     NotifService[Notification Service]
 
@@ -126,6 +130,7 @@ graph TD
     GH -->|Webhook X-Hub-Sig| Backend
     Ext -->|POST /api/v1/reviews| Backend
     Frontend -->|POST /api/v1/reviews| Backend
+    Frontend -->|POST .../regression/trigger| Backend
 
     Backend -->|Enqueue Job| Redis
     Redis -->|Dispatch Job| Worker
@@ -136,10 +141,13 @@ graph TD
     Static --> Arbitrator
     AIPlatform --> Arbitrator
 
+    Worker -.->|POST /api/v1/regression/check| Regression
     Arbitrator -->|Persist Findings| MongoDB
-    Worker -->|Update Check Run / Comment| GH
+    Worker -->|Update Check Run / Annotations| GH
     Worker -->|Dispatch Alerts| NotifService
     Frontend -->|Poll / Stream Status| Backend
+    Backend -->|Read State| MongoDB
+``` Status| Backend
     Backend -->|Read State| MongoDB
 ```
 
@@ -224,18 +232,137 @@ The platform connects to the existing shared **AI Platform** service:
 
 ---
 
-## 12. Notification Service Integration
+## 12. AI Model Regression Detection Platform Integration
+
+The AI PR Reviewer itself is an AI-powered system that depends on LLMs, system prompts, few-shot examples, and model parameters. To ensure high code review quality and prevent silent degradation, the platform integrates with the dedicated [AI Model Regression Detection Platform](https://github.com/rishank-kesarwani/ai-model-regression-detection).
+
+### Why Model Regression is Needed
+
+When changing review models (e.g. `gemini-1.5-pro` vs candidate models), updating system review prompts, or adjusting few-shot rubrics, subtle regressions can occur:
+- **Accuracy / Precision drop:** Candidate model flags false positives on safe code patterns (e.g. false alarm on standard React hooks).
+- **Recall drop:** Candidate model misses critical security vulnerabilities (e.g. SQL injection, unescaped XSS).
+- **Latency inflation:** Review turnaround time increases past acceptable developer thresholds.
+- **Cost escalation:** Token usage per review balloons due to verbose chain-of-thought outputs.
+- **Structured output failure:** Output fails JSON schema parsing.
+
+### Target Architecture & Separation of Concerns
+
+```
+GitHub PR
+    ↓
+AI PR Review Platform
+    ↓
+Code/Static Analysis
+    ↓
+AI Platform
+    ↓
+Review Findings
+    ↓
+Finding Arbitration
+    ↓
+Model Regression Detection  ◄─── Calls POST /api/v1/regression/check
+    ↓
+Regression Decision (PASS / WARN / FAIL)
+    ↓
+Review Result
+    ↓
+GitHub Check Run & Annotations
+    ↓
+Notification Service
+```
+
+The responsibility boundary remains clean:
+- **PR Review Platform:** PR ingestion, git diff extraction, static analysis, prompt assembly, finding arbitration, and GitHub publishing.
+- **Model Regression Detection Platform:** Owns evaluation datasets, rubric definitions, benchmark execution, ground-truth metric calculation, baseline comparison, and regression policies.
+
+### PR Review Evaluation Datasets & Rubrics
+
+The regression platform runs tests against curated PR review evaluation suites containing:
+- **Security Vulnerabilities:** SQL injection, command execution, XSS, insecure deserialization, SSRF.
+- **Concurrency & Async:** Race conditions, unhandled floating promises, deadlock patterns.
+- **Framework & Runtime Misuse:** React re-render cycles, Node.js memory leaks, TypeScript unsafe type assertions.
+- **Safe Code / False-Positive Tests:** High-quality idiomatic code intentionally designed to verify that the model does not trigger false warnings.
+
+### Tracked Metrics
+
+1. **Finding Precision:** % of reported findings that are verified, legitimate issues.
+2. **Finding Recall:** % of total seeded code bugs that the AI successfully uncovered.
+3. **Critical Finding Recall:** Recall specifically on `CRITICAL` severity security threats.
+4. **False-Positive Rate:** % of harmless code patterns misflagged as defects.
+5. **Structured Output Validity:** % of model outputs that conform to strict JSON schemas without repair.
+6. **Average & p95 Review Latency:** Turnaround time for complete diff analysis.
+7. **AI Cost per Review:** Total input/output token expenditure.
+8. **Severity Agreement Rate:** Consistency of finding severity rankings against expert ground truth.
+
+### Regression Check API Contract
+
+- **Endpoint:** `POST {MODEL_REGRESSION_URL}/api/v1/regression/check`
+- **Header:** `x-api-key: {MODEL_REGRESSION_API_KEY}`
+- **Request Payload:**
+```json
+{
+  "project": "ai-pr-review-platform",
+  "version": "1.0.0",
+  "datasetId": "pr-review-evaluation",
+  "datasetVersion": "1.0.0",
+  "model": "gemini-1.5-pro",
+  "promptVersion": "v1.2.0",
+  "baselineId": "baseline-v1.0.0",
+  "metrics": [
+    "quality",
+    "latency",
+    "cost",
+    "structured_output_validity"
+  ]
+}
+```
+- **Response Payload:**
+```json
+{
+  "status": "PASS",
+  "runId": "reg_run_9f81a7b4",
+  "summary": {
+    "passed": 8,
+    "warnings": 1,
+    "failed": 0
+  },
+  "metrics": {
+    "quality": { "baseline": 92.4, "candidate": 93.1, "delta": 0.7, "status": "PASS" },
+    "latency": { "baseline": 2.1, "candidate": 2.3, "delta": 0.2, "status": "WARN" },
+    "cost": { "baseline": 0.021, "candidate": 0.023, "delta": 0.002, "status": "PASS" },
+    "structured_output_validity": { "baseline": 99.2, "candidate": 99.5, "delta": 0.3, "status": "PASS" }
+  },
+  "regressions": []
+}
+```
+
+### Triggering Policies & Failure Resilience
+
+To prevent unnecessary evaluation cost, regression checks are not run on every routine application PR. Instead, configurable policies are supported:
+- **`REGRESSION_CHECK_MODE=manual` (Default):** On-demand execution from dashboard or API.
+- **`REGRESSION_CHECK_MODE=ci`:** Triggered during model/prompt release pipelines.
+- **`REGRESSION_CHECK_MODE=review`:** Run alongside PR reviews for high-security repositories.
+
+**Failure Behavior:**
+If the Model Regression service is temporarily unreachable or experiences an outage:
+- When `REGRESSION_BLOCKING=false` (default): Review sets `regressionStatus=ERROR` and continues code review publication normally.
+- When `REGRESSION_BLOCKING=true`: Fails the GitHub Check Run quality gate.
+
+---
+
+## 13. Notification Service Integration
 
 The backend interacts with the dedicated **Notification Service** via `POST {NOTIFICATION_SERVICE_URL}/notifications/events`:
 - `review.completed`
 - `review.failed`
 - `finding.critical_detected`
+- `regression.failed` (dispatched when model regression quality gate fails)
 
-Notification Service is completely independent from AI Platform, ensuring decoupled infrastructure.
+Notification Service is completely independent from AI Platform and Model Regression Platform, ensuring decoupled infrastructure.
 
 ---
 
-## 13. Redis Architecture
+## 14. Redis Architecture
 
 - **Primary URL:** `REDIS_URL` with automatic TLS detection (`rediss://`).
 - **Fallback Config:** `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`.
@@ -426,7 +553,7 @@ Internet
 
 ---
 
-## 31. Environment Variables
+## 32. Environment Variables
 
 ### Backend (`backend/.env`):
 
@@ -444,6 +571,11 @@ Internet
 | `AI_PLATFORM_PR_REVIEW_API_KEY` | Dedicated AI API Key | `key-...` |
 | `NOTIFICATION_SERVICE_URL` | Notification Service URL | `http://localhost:4001` |
 | `NOTIFICATION_PR_REVIEW_API_KEY`| Dedicated Notif Key | `key-...` |
+| `MODEL_REGRESSION_URL` | Model Regression Platform URL | `http://localhost:5000` |
+| `MODEL_REGRESSION_API_KEY` | Dedicated Regression Key | `key-...` |
+| `MODEL_REGRESSION_TIMEOUT_MS` | Request timeout ms | `10000` |
+| `REGRESSION_CHECK_MODE` | Trigger mode (`manual`/`review`/`ci`) | `manual` |
+| `REGRESSION_BLOCKING` | Block PR check on FAIL | `false` |
 | `GITHUB_APP_ID` | GitHub App ID | `123456` |
 | `GITHUB_APP_PRIVATE_KEY` | GitHub App RSA Key | `"-----BEGIN RSA..."` |
 | `GITHUB_WEBHOOK_SECRET` | Webhook HMAC Secret | `webhook_secret_here` |
@@ -458,7 +590,7 @@ Internet
 
 ---
 
-## 32. Local Development Setup
+## 33. Local Development Setup
 
 ### Prerequisites:
 - Node.js >= 20.x
@@ -497,7 +629,7 @@ npm run dev
 
 ---
 
-## 33. GitHub App Setup Guide
+## 34. GitHub App Setup Guide
 
 1. Navigate to **GitHub Settings -> Developer Settings -> GitHub Apps -> New GitHub App**.
 2. **Webhook URL:** `https://<your-backend-url>/api/v1/github/webhooks`.
@@ -512,7 +644,7 @@ npm run dev
 
 ---
 
-## 34. Chrome Extension Setup Guide
+## 35. Chrome Extension Setup Guide
 
 1. Navigate to `extension/` directory:
 ```bash
@@ -527,7 +659,7 @@ npm run build
 
 ---
 
-## 35. Testing Strategy
+## 36. Testing Strategy
 
 The repository includes a comprehensive Jest test suite verifying analyzers, guards, arbitration, and services:
 
@@ -540,13 +672,14 @@ npm test
 - `utils.spec.ts`: PR URL parsing, diff hunk extraction, SHA256 fingerprinting, URL normalization.
 - `analyzers.spec.ts`: ESLint dynamic code execution detection, floating promise analysis, `any` type checks.
 - `arbitration.spec.ts`: Multi-engine deduplication, corroboration confidence boosts, style downgrade rules.
+- `model-regression.service.spec.ts`: Model regression detection client, PASS/WARN/FAIL classification, timeouts, retries, 401 unauthenticated errors.
 - `github-webhook.guard.spec.ts`: HMAC-SHA256 signature verification and tamper rejection.
 - `auth.service.spec.ts`: Password hashing, token generation, and credential checks.
 - `reviews.service.spec.ts`: Public access review queuing and BullMQ dispatch.
 
 ---
 
-## 36. CI/CD Pipeline
+## 37. CI/CD Pipeline
 
 GitHub Actions CI (`.github/workflows/ci.yml`) runs on every push and pull request:
 - **`backend-check`:** `npm ci`, `npm test`, `npm run build`
@@ -555,7 +688,7 @@ GitHub Actions CI (`.github/workflows/ci.yml`) runs on every push and pull reque
 
 ---
 
-## 37. REST API Documentation
+## 38. REST API Documentation
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -563,6 +696,8 @@ GitHub Actions CI (`.github/workflows/ci.yml`) runs on every push and pull reque
 | `GET` | `/api/v1/reviews` | List recent reviews (filterable by status/repo) |
 | `GET` | `/api/v1/reviews/:id` | Get review status, summary, and severity counts |
 | `GET` | `/api/v1/reviews/:id/findings` | Get detailed findings for a review |
+| `GET` | `/api/v1/reviews/:id/regression` | Get normalized model regression evaluation status & metrics |
+| `POST` | `/api/v1/reviews/:id/regression/trigger` | Trigger an on-demand model regression check |
 | `POST` | `/api/v1/reviews/:id/cancel` | Cancel an active or queued review |
 | `POST` | `/api/v1/reviews/:id/retry` | Retry a failed or partial review |
 | `POST` | `/api/v1/github/webhooks` | GitHub App Webhook ingestion |
@@ -576,7 +711,7 @@ GitHub Actions CI (`.github/workflows/ci.yml`) runs on every push and pull reque
 
 ---
 
-## 38. Known Limitations
+## 39. Known Limitations
 
 1. **Context Window Limits on Massive Monorepo PRs:** Pull requests exceeding 50+ files or 1MB diffs are truncated to preserve token quotas.
 2. **Private Repository Access:** Private repositories require GitHub App installation with authorized repo permissions.
@@ -584,7 +719,7 @@ GitHub Actions CI (`.github/workflows/ci.yml`) runs on every push and pull reque
 
 ---
 
-## 39. Future Improvements
+## 40. Future Improvements
 
 - [ ] Support for Python (`ruff`/`flake8`), Go (`golangci-lint`), and Rust (`clippy`) static analyzers.
 - [ ] Multi-Model AI arbitration (Gemini 1.5 Pro + Claude 3.5 Sonnet consensus voting).

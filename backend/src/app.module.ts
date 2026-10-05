@@ -11,6 +11,7 @@ import { AnalyzersModule } from './analyzers/analyzers.module';
 import { AiModule } from './ai/ai.module';
 import { ArbitrationModule } from './arbitration/arbitration.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { RegressionModule } from './regression/regression.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { RepositoriesModule } from './repositories/repositories.module';
 import { HealthModule } from './health/health.module';
@@ -74,6 +75,7 @@ import { HealthModule } from './health/health.module';
     AiModule,
     ArbitrationModule,
     NotificationsModule,
+    RegressionModule,
     ReviewsModule,
     RepositoriesModule,
     HealthModule,

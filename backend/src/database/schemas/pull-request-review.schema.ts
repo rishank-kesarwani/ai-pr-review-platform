@@ -91,6 +91,34 @@ export class PullRequestReview {
   @Prop({ default: false })
   isPublic: boolean;
 
+  @Prop({
+    type: String,
+    enum: ['NOT_RUN', 'PASS', 'WARN', 'FAIL', 'ERROR'],
+    default: 'NOT_RUN',
+    index: true,
+  })
+  regressionStatus: string;
+
+  @Prop()
+  regressionRunId?: string;
+
+  @Prop({ type: Object })
+  regressionSummary?: {
+    passed?: number;
+    warnings?: number;
+    failed?: number;
+    metrics?: Record<string, any>;
+    regressions?: Array<{
+      metric: string;
+      baselineValue: number;
+      currentValue: number;
+      deltaPercent: number;
+      severity: string;
+      message: string;
+    }>;
+    evaluatedAt?: Date;
+  };
+
   @Prop()
   checkRunId?: number;
 

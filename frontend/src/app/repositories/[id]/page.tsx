@@ -27,6 +27,12 @@ export default function RepositoryConfigPage() {
   const [newRuleInput, setNewRuleInput] = useState('');
   const [ignoredFiles, setIgnoredFiles] = useState<string[]>([]);
   const [newIgnoreInput, setNewIgnoreInput] = useState('');
+  // Model Regression settings
+  const [regressionEnabled, setRegressionEnabled] = useState(false);
+  const [regressionBlocking, setRegressionBlocking] = useState(false);
+  const [regressionDataset, setRegressionDataset] = useState('pr-review-evaluation');
+  const [regressionBaseline, setRegressionBaseline] = useState('baseline-v1.0.0');
+  const [regressionPolicy, setRegressionPolicy] = useState('standard');
 
   useEffect(() => {
     async function loadRepo() {
@@ -40,6 +46,11 @@ export default function RepositoryConfigPage() {
           setMaxFiles(data.configuration.maxFilesPerReview || 50);
           setCustomRules(data.configuration.customRules || []);
           setIgnoredFiles(data.configuration.ignoredFiles || []);
+          setRegressionEnabled(data.configuration.regressionEnabled ?? false);
+          setRegressionBlocking(data.configuration.regressionBlocking ?? false);
+          setRegressionDataset(data.configuration.regressionDataset || 'pr-review-evaluation');
+          setRegressionBaseline(data.configuration.regressionBaseline || 'baseline-v1.0.0');
+          setRegressionPolicy(data.configuration.regressionPolicy || 'standard');
         }
       } catch (err: any) {
         setErrorMessage('Failed to load repository settings');
@@ -63,6 +74,11 @@ export default function RepositoryConfigPage() {
         maxFilesPerReview: maxFiles,
         customRules,
         ignoredFiles,
+        regressionEnabled,
+        regressionBlocking,
+        regressionDataset,
+        regressionBaseline,
+        regressionPolicy,
       });
 
       setSavedSuccess(true);
@@ -264,6 +280,89 @@ export default function RepositoryConfigPage() {
               </span>
             ))}
           </div>
+        </div>
+
+        {/* Card 4: AI Model Regression Quality Gate */}
+        <div className="glass-panel rounded-2xl p-6 border border-dark-600 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-purple-400" />
+                <h3 className="text-sm font-bold text-white">AI Model Regression Detection</h3>
+              </div>
+              <p className="text-xs text-dark-300">
+                Evaluate PR review quality against benchmark datasets to catch model accuracy degradations
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={regressionEnabled}
+                onChange={(e) => setRegressionEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-dark-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+            </label>
+          </div>
+
+          {regressionEnabled && (
+            <div className="space-y-4 pt-4 border-t border-dark-700">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-dark-800/60 border border-dark-700">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-semibold text-white">Block PR on Regression Failure</span>
+                  <p className="text-[11px] text-dark-300">
+                    When enabled, failing AI regression checks will fail the GitHub Status Check
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={regressionBlocking}
+                    onChange={(e) => setRegressionBlocking(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-dark-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-500"></div>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-dark-200">Evaluation Dataset</label>
+                  <input
+                    type="text"
+                    value={regressionDataset}
+                    onChange={(e) => setRegressionDataset(e.target.value)}
+                    placeholder="pr-review-evaluation"
+                    className="w-full bg-dark-800 border border-dark-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-dark-200">Baseline Identifier</label>
+                  <input
+                    type="text"
+                    value={regressionBaseline}
+                    onChange={(e) => setRegressionBaseline(e.target.value)}
+                    placeholder="baseline-v1.0.0"
+                    className="w-full bg-dark-800 border border-dark-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-dark-200">Regression Policy</label>
+                  <select
+                    value={regressionPolicy}
+                    onChange={(e) => setRegressionPolicy(e.target.value)}
+                    className="w-full bg-dark-800 border border-dark-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="standard">Standard (3% Quality Delta)</option>
+                    <option value="strict">Strict (1% Quality Delta)</option>
+                    <option value="lenient">Lenient (5% Quality Delta)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Feedback Notices */}

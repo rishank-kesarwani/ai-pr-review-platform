@@ -86,4 +86,21 @@ export class ReviewsController {
   ) {
     return this.reviewsService.retryReview(id, userId);
   }
+
+  @Public()
+  @Get(':id/regression')
+  @ApiOperation({ summary: 'Get model regression evaluation results for a review' })
+  async getReviewRegression(@Param('id') id: string) {
+    return this.reviewsService.getReviewRegression(id);
+  }
+
+  @Public()
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/regression/trigger')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Trigger on-demand model regression check for a review' })
+  async triggerReviewRegression(@Param('id') id: string) {
+    return this.reviewsService.triggerReviewRegression(id);
+  }
 }
+

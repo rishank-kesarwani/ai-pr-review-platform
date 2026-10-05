@@ -47,6 +47,21 @@ export class ReviewConfiguration {
 
   @Prop({ default: 50 })
   maxFilesPerReview: number;
+
+  @Prop({ default: false })
+  regressionEnabled: boolean;
+
+  @Prop({ default: false })
+  regressionBlocking: boolean;
+
+  @Prop({ default: 'pr-review-evaluation' })
+  regressionDataset: string;
+
+  @Prop({ default: 'pr-review-baseline-v1' })
+  regressionBaseline: string;
+
+  @Prop({ default: 'manual', enum: ['manual', 'review', 'ci', 'critical-only'] })
+  regressionPolicy: string;
 }
 
 export const ReviewConfigurationSchema = SchemaFactory.createForClass(ReviewConfiguration);

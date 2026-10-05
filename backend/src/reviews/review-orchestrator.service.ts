@@ -12,8 +12,9 @@ import { AnalyzersService } from '../analyzers/analyzers.service';
 import { AiPlatformService } from '../ai/ai-platform.service';
 import { ArbitrationService } from '../arbitration/arbitration.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ModelRegressionService } from '../regression/model-regression.service';
 import { parseGitHubPrUrl } from '../common/utils/github-url-parser.util';
-import { ReviewStatus, JobStatus, Severity } from '../common/enums';
+import { ReviewStatus, JobStatus, Severity, RegressionStatus } from '../common/enums';
 
 @Injectable()
 export class ReviewOrchestratorService {
@@ -30,6 +31,7 @@ export class ReviewOrchestratorService {
     private readonly aiPlatformService: AiPlatformService,
     private readonly arbitrationService: ArbitrationService,
     private readonly notificationsService: NotificationsService,
+    private readonly modelRegressionService: ModelRegressionService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -183,11 +185,70 @@ export class ReviewOrchestratorService {
         await this.findingModel.insertMany(findingDocs);
       }
 
+      // MODEL REGRESSION QUALITY GATE CHECK
+      let regressionStatus: string = RegressionStatus.NOT_RUN;
+      let regressionRunId: string | undefined;
+      let regressionSummary: any;
+
+      const globalMode = this.configService.get<string>('app.modelRegression.checkMode') || 'manual';
+      const repoRegressionEnabled = repoConfig?.regressionEnabled ?? (globalMode === 'review');
+      const isCriticalOnlyMode = globalMode === 'critical-only' || repoConfig?.regressionPolicy === 'critical-only';
+      const shouldRunRegression =
+        repoRegressionEnabled ||
+        (isCriticalOnlyMode && severityCounts.critical > 0) ||
+        globalMode === 'review';
+
+      if (shouldRunRegression) {
+        this.logger.log(`Evaluating AI Model Regression for review #${review._id}`);
+        try {
+          const regressionResult = await this.modelRegressionService.checkRegression({
+            reviewId: review._id.toString(),
+            repository: review.repoFullName,
+            pullRequest: review.pullRequestNumber,
+            commitSha: prDetails.headSha,
+            datasetId: repoConfig?.regressionDataset,
+            baselineId: repoConfig?.regressionBaseline,
+          });
+
+          regressionStatus = regressionResult.status;
+          regressionRunId = regressionResult.runId;
+          regressionSummary = {
+            passed: regressionResult.summary?.passed || 0,
+            warnings: regressionResult.summary?.warnings || 0,
+            failed: regressionResult.summary?.failed || 0,
+            metrics: regressionResult.metrics,
+            regressions: regressionResult.regressions,
+            evaluatedAt: new Date(),
+          };
+
+          // Check if regression blocking is enabled
+          const isBlocking = repoConfig?.regressionBlocking ?? this.configService.get<boolean>('app.modelRegression.blocking');
+          if (regressionStatus === RegressionStatus.FAIL && isBlocking) {
+            this.logger.warn(`Model regression detected in blocking mode for PR #${review._id}.`);
+          }
+        } catch (regErr: any) {
+          this.logger.warn(`Model regression check encountered error: ${regErr.message}`);
+          regressionStatus = RegressionStatus.ERROR;
+        }
+      }
+
+      // Update review record with regression state
+      await this.reviewModel.findByIdAndUpdate(review._id, {
+        regressionStatus,
+        regressionRunId,
+        regressionSummary,
+      });
+
       // STAGE 5: PUBLISHING GITHUB OUTPUTS
       await this.updateReviewStage(review, ReviewStatus.PUBLISHING, 90, 'Publishing review summary and check status');
 
       if (installationId && checkRunId) {
-        const conclusion = severityCounts.critical > 0 || severityCounts.high > 0 ? 'failure' : 'success';
+        const isBlocking = repoConfig?.regressionBlocking ?? this.configService.get<boolean>('app.modelRegression.blocking');
+        const regressionBlockFail = isBlocking && regressionStatus === RegressionStatus.FAIL;
+        const conclusion = severityCounts.critical > 0 || severityCounts.high > 0 || regressionBlockFail
+          ? 'failure'
+          : 'success';
+
         const annotations = arbitratedFindings
           .filter((f) => f.line && f.line > 0)
           .map((f) => ({
@@ -203,12 +264,19 @@ export class ReviewOrchestratorService {
             message: `${f.description}\n\nRecommendation: ${f.recommendation}`,
           }));
 
+        const checkSummaryMarkdown = this.buildCheckSummaryMarkdown(
+          aiResult.summary,
+          severityCounts,
+          regressionStatus,
+          regressionSummary,
+        );
+
         await this.githubApi.updateCheckRun(
           parsed.owner,
           parsed.repo,
           checkRunId,
           conclusion,
-          aiResult.summary || 'AI Review completed successfully.',
+          checkSummaryMarkdown,
           annotations,
           installationId,
         );
@@ -217,7 +285,7 @@ export class ReviewOrchestratorService {
       // Optional PR Comment
       const autoComment = repoConfig?.autoCommentEnabled ?? this.configService.get<boolean>('app.github.autoCommentEnabled');
       if (autoComment && installationId && arbitratedFindings.length > 0) {
-        const commentBody = this.buildPrCommentMarkdown(aiResult.summary, arbitratedFindings);
+        const commentBody = this.buildPrCommentMarkdown(aiResult.summary, arbitratedFindings, regressionStatus);
         await this.githubApi.postPullRequestComment(parsed.owner, parsed.repo, parsed.pullNumber, commentBody, installationId);
       }
 
@@ -235,8 +303,15 @@ export class ReviewOrchestratorService {
       await this.updateJobStatus(job, JobStatus.COMPLETED, `Review completed in ${durationMs}ms with ${arbitratedFindings.length} findings`);
 
       // Dispatch Notifications
+      const isSevereRegression = regressionStatus === RegressionStatus.FAIL;
+      const eventType = isSevereRegression
+        ? 'regression.failed'
+        : severityCounts.critical > 0
+          ? 'finding.critical_detected'
+          : 'review.completed';
+
       await this.notificationsService.sendNotification({
-        eventType: severityCounts.critical > 0 ? 'finding.critical_detected' : 'review.completed',
+        eventType: eventType as any,
         repoFullName: review.repoFullName,
         pullRequestNumber: review.pullRequestNumber,
         prTitle: prDetails.title,
@@ -312,8 +387,52 @@ export class ReviewOrchestratorService {
     await job.save();
   }
 
-  private buildPrCommentMarkdown(summary: string, findings: any[]): string {
-    let md = `## 🤖 AI Pull Request Review Summary\n\n${summary}\n\n### 🔍 Key Findings (${findings.length})\n\n`;
+  private buildCheckSummaryMarkdown(
+    summary: string,
+    severityCounts: any,
+    regressionStatus: string,
+    regressionSummary?: any,
+  ): string {
+    const regIcon =
+      regressionStatus === 'PASS'
+        ? '✅'
+        : regressionStatus === 'WARN'
+          ? '⚠️'
+          : regressionStatus === 'FAIL'
+            ? '❌'
+            : regressionStatus === 'ERROR'
+              ? '⚠️'
+              : 'ℹ️';
+
+    let md = `## 🤖 AI Code Review Summary\n\n${summary}\n\n`;
+    md += `### 🚦 Automated Quality Gates\n`;
+    md += `- ✅ Static Code Analysis (ESLint & TypeScript Rules)\n`;
+    md += `- ✅ Context-Aware AI Review (Shared AI Platform)\n`;
+    md += `- ✅ Finding Arbitration & Deduplication\n`;
+    md += `- ${regIcon} AI Model Regression Check: **${regressionStatus}**\n`;
+
+    if (regressionSummary?.metrics && Object.keys(regressionSummary.metrics).length > 0) {
+      md += `\n**Evaluation Metrics:**\n`;
+      for (const [key, val] of Object.entries(regressionSummary.metrics)) {
+        if (typeof val === 'object' && val !== null) {
+          const v = val as any;
+          md += `- ${key}: current **${v.current ?? 'N/A'}** vs baseline **${v.baseline ?? 'N/A'}**\n`;
+        }
+      }
+    }
+
+    md += `\n### 🔍 Issues Found (${severityCounts.total})\n`;
+    md += `- **Critical**: ${severityCounts.critical} | **High**: ${severityCounts.high} | **Medium**: ${severityCounts.medium} | **Low**: ${severityCounts.low}\n`;
+    return md;
+  }
+
+  private buildPrCommentMarkdown(summary: string, findings: any[], regressionStatus?: string): string {
+    let md = `## 🤖 AI Pull Request Review Summary\n\n${summary}\n\n`;
+    if (regressionStatus && regressionStatus !== 'NOT_RUN') {
+      const regIcon = regressionStatus === 'PASS' ? '✅' : regressionStatus === 'WARN' ? '⚠️' : '❌';
+      md += `> **Model Quality Gate**: ${regIcon} AI Regression Status: **${regressionStatus}**\n\n`;
+    }
+    md += `### 🔍 Key Findings (${findings.length})\n\n`;
     for (const f of findings.slice(0, 5)) {
       md += `#### [${f.severity}] ${f.title}\n`;
       md += `- **File**: \`${f.file}\`${f.line ? ` (line ${f.line})` : ''}\n`;
@@ -327,3 +446,4 @@ export class ReviewOrchestratorService {
     return md;
   }
 }
+
