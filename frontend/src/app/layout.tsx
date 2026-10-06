@@ -7,6 +7,14 @@ export const metadata = {
   title: 'AI PR Review Platform | Autonomous Code Intelligence & Security',
   description:
     'Production-grade automated GitHub Pull Request review platform powered by AST static analysis, AI inspection, BullMQ queues, and GitHub Checks.',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+  },
 };
 
 export default function RootLayout({

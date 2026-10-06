@@ -12,8 +12,8 @@ if (!fs.existsSync(distDir)) {
 // Copy manifest.json
 fs.copyFileSync(manifestPath, path.join(distDir, 'manifest.json'));
 
-// Copy HTML and CSS files
-['popup.html', 'popup.css', 'options.html'].forEach((file) => {
+// Copy HTML, CSS, and SVG asset files
+['popup.html', 'popup.css', 'options.html', 'icon.svg'].forEach((file) => {
   const src = path.join(srcDir, file);
   if (fs.existsSync(src)) {
     fs.copyFileSync(src, path.join(distDir, file));

@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
-import { Sparkles, Github, Shield, Cpu, RefreshCw } from 'lucide-react';
+import { Github, Shield, Cpu, RefreshCw } from 'lucide-react';
+import Logo from './Logo';
 
 export default function Footer() {
   return (
@@ -10,9 +11,7 @@ export default function Footer() {
           {/* Col 1 */}
           <div className="space-y-3 md:col-span-2">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded bg-brand-600 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
+              <Logo size={28} />
               <span className="font-bold text-white tracking-tight">AI PR Review Platform</span>
             </div>
             <p className="text-xs text-dark-300 leading-relaxed max-w-sm">

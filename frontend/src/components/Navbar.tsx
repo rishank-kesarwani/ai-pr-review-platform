@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Sparkles, GitPullRequest, FolderGit2, Settings, BookOpen, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import Logo from './Logo';
 import { api } from '../lib/api';
 import { UserProfile } from '../lib/types';
 
@@ -51,16 +52,8 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-brand-600 to-purple-500 flex items-center justify-center shadow-lg shadow-brand-500/20 group-hover:scale-105 transition-transform">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-bold text-base tracking-tight text-white group-hover:text-brand-400 transition-colors">
-                  AI PR Review
-                </span>
-                <span className="text-[10px] text-dark-300 font-mono tracking-wider">ENTERPRISE PLATFORM</span>
-              </div>
+            <Link href="/" className="group flex items-center">
+              <Logo showText={true} size={36} />
             </Link>
           </div>
 
