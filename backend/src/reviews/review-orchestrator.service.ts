@@ -68,16 +68,17 @@ export class ReviewOrchestratorService {
         throw new Error(`Invalid PR URL: ${review.prUrl}`);
       }
 
-      // Check repo configuration if exists
-      const repoConfig = await this.configModel.findOne({ repositoryId: review.repositoryId }).lean();
-      const maxFiles = repoConfig?.maxFilesPerReview || this.configService.get<number>('app.reviewLimits.maxFiles') || 50;
-
-      // Find installation ID if repository is registered
+      // Find installation ID and repo configuration if repository is registered
+      let repoDoc: any = null;
       let installationId: number | undefined;
       if (review.repositoryId) {
-        const repo = await this.repoModel.findById(review.repositoryId);
-        installationId = repo?.installationId;
+        repoDoc = await this.repoModel.findById(review.repositoryId);
+        installationId = repoDoc?.installationId;
       }
+
+      const explicitConfig = await this.configModel.findOne({ repositoryId: review.repositoryId }).lean();
+      const repoConfig = explicitConfig || repoDoc?.configuration;
+      const maxFiles = repoConfig?.maxFilesPerReview || this.configService.get<number>('app.reviewLimits.maxFiles') || 50;
 
       const [prDetails, prFiles] = await Promise.all([
         this.githubApi.getPullRequest(parsed.owner, parsed.repo, parsed.pullNumber, installationId),
@@ -235,6 +236,7 @@ export class ReviewOrchestratorService {
       // Update review record with regression state
       await this.reviewModel.findByIdAndUpdate(review._id, {
         regressionStatus,
+        regressionDecision: regressionStatus,
         regressionRunId,
         regressionSummary,
       });

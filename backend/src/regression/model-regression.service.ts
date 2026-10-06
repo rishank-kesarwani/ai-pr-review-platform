@@ -74,7 +74,10 @@ export class ModelRegressionService {
 
         const duration = Date.now() - startTime;
         const result = response.data;
-        const normalizedStatus = (result.status || RegressionStatus.PASS) as RegressionStatus;
+        const validStatuses = Object.values(RegressionStatus);
+        const normalizedStatus = validStatuses.includes(result.status as any)
+          ? (result.status as RegressionStatus)
+          : RegressionStatus.NOT_RUN;
 
         this.logger.log(
           `[Observability] Regression check completed in ${duration}ms: ` +

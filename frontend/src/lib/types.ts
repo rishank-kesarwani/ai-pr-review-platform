@@ -76,6 +76,7 @@ export interface PullRequestReview {
   commitSha: string;
   status: ReviewStatus;
   regressionStatus?: RegressionStatus;
+  regressionDecision?: RegressionStatus;
   regressionRunId?: string;
   regressionSummary?: RegressionSummary;
   progressPercent: number;

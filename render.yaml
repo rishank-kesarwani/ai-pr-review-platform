@@ -1,0 +1,74 @@
+services:
+  # Backend API & BullMQ Worker Service
+  - type: web
+    name: ai-pr-review-backend
+    env: node
+    rootDir: backend
+    plan: standard
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: PUBLIC_ACCESS_ENABLED
+        value: true
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: AI_PLATFORM_URL
+        sync: false
+      - key: AI_PLATFORM_PR_REVIEW_API_KEY
+        sync: false
+      - key: MODEL_REGRESSION_URL
+        sync: false
+      - key: MODEL_REGRESSION_API_KEY
+        sync: false
+      - key: MODEL_REGRESSION_TIMEOUT_MS
+        value: 10000
+      - key: REGRESSION_CHECK_MODE
+        value: manual
+      - key: REGRESSION_BLOCKING
+        value: false
+      - key: NOTIFICATION_SERVICE_URL
+        sync: false
+      - key: NOTIFICATION_PR_REVIEW_API_KEY
+        sync: false
+      - key: GITHUB_APP_ID
+        sync: false
+      - key: GITHUB_APP_CLIENT_ID
+        sync: false
+      - key: GITHUB_APP_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_APP_PRIVATE_KEY
+        sync: false
+      - key: GITHUB_WEBHOOK_SECRET
+        sync: false
+
+  # Frontend Next.js Web Dashboard
+  - type: web
+    name: ai-pr-review-frontend
+    env: node
+    rootDir: frontend
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: ai-pr-review-backend
+          property: host
+      - key: NEXT_PUBLIC_ACCESS_ENABLED
+        value: true

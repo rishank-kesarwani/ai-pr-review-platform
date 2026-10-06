@@ -99,6 +99,13 @@ export class PullRequestReview {
   })
   regressionStatus: string;
 
+  @Prop({
+    type: String,
+    enum: ['NOT_RUN', 'PASS', 'WARN', 'FAIL', 'ERROR', null],
+    default: null,
+  })
+  regressionDecision?: string;
+
   @Prop()
   regressionRunId?: string;
 

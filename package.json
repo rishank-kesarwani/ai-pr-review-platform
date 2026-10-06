@@ -9,6 +9,7 @@
     "build:backend": "cd backend && npm run build",
     "build:frontend": "cd frontend && npm run build",
     "build:extension": "cd extension && npm run build",
+    "package:extension": "cd extension && npm run package",
     "test": "npm run test:backend",
     "test:backend": "cd backend && npm test",
     "start:backend": "cd backend && npm run start:dev",

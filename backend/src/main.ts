@@ -70,7 +70,7 @@ async function bootstrap() {
 
   // Global Prefix: /api/v1 (Exclude /health)
   app.setGlobalPrefix('api/v1', {
-    exclude: ['health', 'health/(.*)'],
+    exclude: ['health', 'health/{*path}'],
   });
 
   // Global Pipes & Filters

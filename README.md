@@ -537,9 +537,10 @@ Internet
 
 - **Root Directory:** `backend`
 - **Build Command:** `npm install && npm run build`
-- **Start Command:** `npm run start:prod`
+- **Start Command:** `npm run start`
 - **Health Check Path:** `/health`
 - **Environment:** Node.js (Render injects `$PORT` dynamically, application binds to `0.0.0.0`).
+- **Render Blueprint:** Declarative infrastructure available via [`render.yaml`](file:///Users/rishankkesharwani/Documents/Personal/ai-pr-review-platform/render.yaml).
 
 ---
 

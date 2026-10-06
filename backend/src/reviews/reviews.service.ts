@@ -230,10 +230,12 @@ export class ReviewsService {
 
   async getReviewRegression(id: string) {
     const review: any = await this.getReviewById(id);
+    const status = review.regressionStatus || 'NOT_RUN';
     return {
       reviewId: review._id,
-      status: review.regressionStatus || 'NOT_RUN',
-      runId: review.regressionRunId,
+      status,
+      decision: status,
+      runId: review.regressionRunId || null,
       summary: {
         passed: review.regressionSummary?.passed || 0,
         warnings: review.regressionSummary?.warnings || 0,

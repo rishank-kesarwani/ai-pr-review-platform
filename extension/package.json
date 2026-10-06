@@ -5,6 +5,7 @@
   "scripts": {
     "build": "tsc && npm run copy-assets",
     "copy-assets": "node copy-assets.js",
+    "package": "npm run build && node package-extension.js",
     "watch": "tsc -w"
   },
   "devDependencies": {

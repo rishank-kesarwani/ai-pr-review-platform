@@ -169,4 +169,23 @@ describe('ModelRegressionService', () => {
     expect(result.status).toBe(RegressionStatus.ERROR);
     expect(result.error).toBeDefined();
   });
+
+  it('should handle malformed response by defaulting missing fields safely', async () => {
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        // Missing status and summary
+        runId: 'malformed-1',
+      },
+    });
+
+    const result = await service.checkRegression({
+      reviewId: 'review-7',
+    });
+
+    expect(result.status).toBe(RegressionStatus.NOT_RUN);
+    expect(result.runId).toBe('malformed-1');
+    expect(result.summary).toEqual({ passed: 0, warnings: 0, failed: 0 });
+    expect(result.metrics).toEqual({});
+    expect(result.regressions).toEqual([]);
+  });
 });
