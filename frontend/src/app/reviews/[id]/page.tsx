@@ -589,7 +589,15 @@ export default function ReviewDetailPage() {
           </div>
         </div>
 
-        {filteredFindings.length === 0 ? (
+        {review.status?.toUpperCase() === "FAILED" || review.error ? (
+          <div className="glass-panel rounded-2xl p-12 text-center space-y-2 border border-rose-500/30 bg-rose-950/10">
+            <AlertTriangle className="w-8 h-8 text-rose-400 mx-auto" />
+            <h3 className="text-sm font-semibold text-rose-200">Execution Failed / Unable to fetch PR files</h3>
+            <p className="text-xs text-rose-400/80 max-w-md mx-auto">
+              {review.error || "The review could not inspect files due to GitHub API error or missing repository access."}
+            </p>
+          </div>
+        ) : filteredFindings.length === 0 ? (
           <div className="glass-panel rounded-2xl p-12 text-center space-y-2 border border-dark-600">
             <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
             <h3 className="text-sm font-semibold text-white">No Issues Found for Selected Criteria</h3>
