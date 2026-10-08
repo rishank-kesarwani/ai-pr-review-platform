@@ -108,7 +108,10 @@ export class PullRequestReview {
   @Prop({ default: 0 })
   deletions: number;
 
-  @Prop({ default: 'MANUAL', enum: ['WEBHOOK', 'MANUAL', 'EXTENSION'] })
+  @Prop({
+    default: 'MANUAL',
+    enum: ['WEBHOOK', 'MANUAL', 'EXTENSION', 'RETRY', 'GUEST', 'EXTENSION_OR_GUEST'],
+  })
   triggeredBy: string;
 
   @Prop({ type: Types.ObjectId, ref: 'User', index: true })
