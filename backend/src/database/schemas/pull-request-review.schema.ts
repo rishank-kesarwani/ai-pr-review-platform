@@ -33,6 +33,32 @@ export class PullRequestReview {
   @Prop({ required: true })
   headBranch: string;
 
+  @Prop()
+  baseOwner?: string;
+
+  @Prop()
+  baseRepo?: string;
+
+  @Prop()
+  headOwner?: string;
+
+  @Prop()
+  headRepo?: string;
+
+  @Prop({ default: false })
+  isFork: boolean;
+
+  @Prop({
+    type: String,
+    enum: ['GITHUB_APP', 'PUBLIC_PR_URL'],
+    default: 'PUBLIC_PR_URL',
+    index: true,
+  })
+  reviewSource: 'GITHUB_APP' | 'PUBLIC_PR_URL';
+
+  @Prop({ default: false })
+  githubWriteAccess: boolean;
+
   @Prop({ required: true, index: true })
   commitSha: string;
 

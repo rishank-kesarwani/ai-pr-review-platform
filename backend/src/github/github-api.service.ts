@@ -9,9 +9,14 @@ export interface PullRequestDetails {
   title: string;
   description: string;
   author: string;
+  baseOwner: string;
+  baseRepo: string;
   baseBranch: string;
+  headOwner: string;
+  headRepo: string;
   headBranch: string;
   headSha: string;
+  isFork: boolean;
   htmlUrl: string;
   isPrivate: boolean;
   additions: number;
@@ -51,20 +56,35 @@ export class GitHubApiService {
         pull_number: pullNumber,
       });
 
+      const baseOwner = data.base.repo?.owner?.login || owner;
+      const baseRepo = data.base.repo?.name || repo;
+      const headOwner = data.head.repo?.owner?.login || data.head.user?.login || 'unknown';
+      const headRepo = data.head.repo?.name || baseRepo;
+      const isFork = Boolean(
+        data.head.repo?.fork ||
+        (data.head.repo && data.base.repo && data.head.repo.full_name !== data.base.repo.full_name) ||
+        (headOwner && baseOwner && headOwner.toLowerCase() !== baseOwner.toLowerCase())
+      );
+
       return {
         id: data.id,
         number: data.number,
         title: data.title || '',
         description: data.body || '',
         author: data.user?.login || 'unknown',
+        baseOwner,
+        baseRepo,
         baseBranch: data.base.ref,
+        headOwner,
+        headRepo,
         headBranch: data.head.ref,
         headSha: data.head.sha,
+        isFork,
         htmlUrl: data.html_url,
-        isPrivate: data.base.repo?.private || false,
-        additions: data.additions,
-        deletions: data.deletions,
-        changedFilesCount: data.changed_files,
+        isPrivate: data.base.repo?.private || data.head.repo?.private || false,
+        additions: data.additions ?? 0,
+        deletions: data.deletions ?? 0,
+        changedFilesCount: data.changed_files ?? 0,
       };
     } catch (error: any) {
       this.logger.error(
@@ -72,19 +92,25 @@ export class GitHubApiService {
       );
       if (error.status === 404) {
         throw new HttpException(
-          `Pull request ${owner}/${repo}#${pullNumber} not found or is private`,
+          `This Pull Request is private or requires GitHub authorization. Install/connect the GitHub App for this repository before reviewing it, or verify the repository and PR number exist.`,
           HttpStatus.NOT_FOUND,
         );
       }
       if (error.status === 403) {
         throw new HttpException(
-          `GitHub API rate limit exceeded or access forbidden`,
+          `GitHub API rate limit exceeded or access forbidden. Please connect the GitHub App or try again later.`,
           HttpStatus.FORBIDDEN,
+        );
+      }
+      if (error.status === 401) {
+        throw new HttpException(
+          `GitHub API authentication failed. Verify GitHub credentials or connection.`,
+          HttpStatus.UNAUTHORIZED,
         );
       }
       throw new HttpException(
         `GitHub API error: ${error.message}`,
-        HttpStatus.BAD_GATEWAY,
+        error.status && error.status >= 400 && error.status < 600 ? error.status : HttpStatus.BAD_GATEWAY,
       );
     }
   }

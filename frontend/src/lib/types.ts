@@ -64,6 +64,7 @@ export interface RegressionSummary {
 
 export interface PullRequestReview {
   _id: string;
+  reviewId?: string;
   repositoryId?: string;
   repoFullName: string;
   pullRequestNumber: number;
@@ -71,9 +72,16 @@ export interface PullRequestReview {
   prDescription?: string;
   prUrl: string;
   author?: string;
+  baseOwner?: string;
+  baseRepo?: string;
   baseBranch: string;
+  headOwner?: string;
+  headRepo?: string;
   headBranch: string;
   commitSha: string;
+  isFork?: boolean;
+  reviewSource?: 'GITHUB_APP' | 'PUBLIC_PR_URL';
+  githubWriteAccess?: boolean;
   status: ReviewStatus;
   regressionStatus?: RegressionStatus;
   regressionDecision?: RegressionStatus;

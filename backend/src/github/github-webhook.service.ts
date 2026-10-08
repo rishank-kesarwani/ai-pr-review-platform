@@ -94,6 +94,16 @@ export class GitHubWebhookService {
       });
     }
 
+    const baseOwner = repo.owner?.login || repoFullName.split('/')[0];
+    const baseRepo = repo.name || repoFullName.split('/')[1];
+    const headOwner = pr.head?.repo?.owner?.login || pr.user?.login || baseOwner;
+    const headRepo = pr.head?.repo?.name || baseRepo;
+    const isFork = Boolean(
+      pr.head?.repo?.fork ||
+      (pr.head?.repo?.full_name && pr.head?.repo?.full_name !== repoFullName) ||
+      (headOwner && baseOwner && headOwner.toLowerCase() !== baseOwner.toLowerCase())
+    );
+
     // Trigger asynchronous PR review
     this.logger.log(`Enqueuing review for ${repoFullName}#${pullNumber} (${commitSha})`);
     await this.reviewsService.enqueueReview({
@@ -107,9 +117,14 @@ export class GitHubWebhookService {
         title: pr.title,
         description: pr.body || '',
         author: pr.user?.login || 'unknown',
+        baseOwner,
+        baseRepo,
         baseBranch: pr.base.ref,
+        headOwner,
+        headRepo,
         headBranch: pr.head.ref,
         headSha: commitSha,
+        isFork,
         htmlUrl: pr.html_url,
         isPrivate: repo.private,
         additions: pr.additions || 0,

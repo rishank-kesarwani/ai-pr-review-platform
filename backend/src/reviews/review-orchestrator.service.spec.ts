@@ -224,4 +224,66 @@ describe('ReviewOrchestratorService - Regression & Quality Gates', () => {
       }),
     );
   });
+
+  it('should not create check run or post comment for public PR without GitHub App installation', async () => {
+    // Review without repositoryId / installationId
+    mockReviewModel.findById.mockResolvedValueOnce({
+      _id: 'rev-public-001',
+      repositoryId: undefined,
+      repoFullName: 'karanpratapsingh/system-design',
+      pullRequestNumber: 13,
+      prUrl: 'https://github.com/karanpratapsingh/system-design/pull/13',
+    });
+
+    mockRepoModel.findById.mockResolvedValueOnce(null);
+
+    mockGithubApi.getPullRequest.mockResolvedValueOnce({
+      id: 200,
+      number: 13,
+      title: 'Update system design',
+      author: 'vbeskrovnov',
+      baseOwner: 'karanpratapsingh',
+      baseRepo: 'system-design',
+      baseBranch: 'master',
+      headOwner: 'vbeskrovnov',
+      headRepo: 'system-design',
+      headBranch: 'patch-1',
+      headSha: 'fork-sha-123',
+      isFork: true,
+      isPrivate: false,
+      htmlUrl: 'https://github.com/karanpratapsingh/system-design/pull/13',
+      additions: 10,
+      deletions: 2,
+      changedFilesCount: 1,
+    });
+
+    await orchestrator.processReview('bull-job-1');
+
+    // Verify Check Run was NOT created
+    expect(mockGithubApi.createCheckRun).not.toHaveBeenCalled();
+    expect(mockGithubApi.updateCheckRun).not.toHaveBeenCalled();
+    expect(mockGithubApi.postPullRequestComment).not.toHaveBeenCalled();
+
+    // Verify fork metadata and public mode was persisted
+    expect(mockReviewModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      'rev-public-001',
+      expect.objectContaining({
+        baseOwner: 'karanpratapsingh',
+        baseRepo: 'system-design',
+        headOwner: 'vbeskrovnov',
+        headRepo: 'system-design',
+        isFork: true,
+        reviewSource: 'PUBLIC_PR_URL',
+        githubWriteAccess: false,
+      }),
+    );
+
+    // Verify review completed successfully
+    expect(mockReviewModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      'rev-public-001',
+      expect.objectContaining({
+        status: ReviewStatus.COMPLETED,
+      }),
+    );
+  });
 });

@@ -48,8 +48,8 @@ describe('GitHubApiService', () => {
         body: 'Description',
         html_url: 'https://github.com/owner/repo/pull/42',
         user: { login: 'octocat' },
-        base: { ref: 'main', repo: { private: false } },
-        head: { ref: 'feat', sha: 'sha123' },
+        base: { ref: 'main', repo: { owner: { login: 'owner' }, name: 'repo', full_name: 'owner/repo', private: false } },
+        head: { ref: 'feat', sha: 'sha123', repo: { owner: { login: 'owner' }, name: 'repo', full_name: 'owner/repo' } },
         additions: 20,
         deletions: 5,
         changed_files: 2,
@@ -59,10 +59,53 @@ describe('GitHubApiService', () => {
     const pr = await apiService.getPullRequest('owner', 'repo', 42, 123);
     expect(pr.number).toBe(42);
     expect(pr.headSha).toBe('sha123');
+    expect(pr.isFork).toBe(false);
     expect(mockAppService.getInstallationOctokit).toHaveBeenCalledWith(123);
   });
 
-  it('should handle GitHub API failure gracefully when PR is not found or API throws', async () => {
+  it('should fetch public PR with fork metadata without installation token', async () => {
+    mockOctokit.rest.pulls.get.mockResolvedValueOnce({
+      data: {
+        id: 200,
+        number: 13,
+        title: 'Add system design docs',
+        body: 'Improves architecture diagram',
+        html_url: 'https://github.com/karanpratapsingh/system-design/pull/13',
+        user: { login: 'vbeskrovnov' },
+        base: {
+          ref: 'master',
+          repo: {
+            owner: { login: 'karanpratapsingh' },
+            name: 'system-design',
+            full_name: 'karanpratapsingh/system-design',
+            private: false,
+          },
+        },
+        head: {
+          ref: 'patch-1',
+          sha: 'forksha789',
+          repo: {
+            owner: { login: 'vbeskrovnov' },
+            name: 'system-design',
+            full_name: 'vbeskrovnov/system-design',
+            fork: true,
+          },
+        },
+        additions: 15,
+        deletions: 2,
+        changed_files: 1,
+      },
+    });
+
+    const pr = await apiService.getPullRequest('karanpratapsingh', 'system-design', 13, undefined);
+    expect(pr.number).toBe(13);
+    expect(pr.baseOwner).toBe('karanpratapsingh');
+    expect(pr.headOwner).toBe('vbeskrovnov');
+    expect(pr.isFork).toBe(true);
+    expect(mockAppService.getAppOctokit).toHaveBeenCalled();
+  });
+
+  it('should handle GitHub API failure gracefully when PR is private or not found', async () => {
     mockOctokit.rest.pulls.get.mockRejectedValueOnce({
       status: 404,
       message: 'Not Found',
@@ -70,7 +113,18 @@ describe('GitHubApiService', () => {
 
     await expect(
       apiService.getPullRequest('owner', 'repo', 999, 123),
-    ).rejects.toThrow('Pull request owner/repo#999 not found or is private');
+    ).rejects.toThrow('This Pull Request is private or requires GitHub authorization');
+  });
+
+  it('should handle GitHub API rate limit (403)', async () => {
+    mockOctokit.rest.pulls.get.mockRejectedValueOnce({
+      status: 403,
+      message: 'API rate limit exceeded',
+    });
+
+    await expect(
+      apiService.getPullRequest('owner', 'repo', 42, undefined),
+    ).rejects.toThrow('GitHub API rate limit exceeded');
   });
 
   it('should handle installation token authentication failure', async () => {
@@ -83,7 +137,7 @@ describe('GitHubApiService', () => {
     ).rejects.toThrow('Bad credentials or installation suspended');
   });
 
-  it('should create check run on GitHub and return checkRunId', async () => {
+  it('should create check run on GitHub when installation exists', async () => {
     mockOctokit.rest.checks.create.mockResolvedValueOnce({
       data: { id: 777001 },
     });
@@ -97,5 +151,14 @@ describe('GitHubApiService', () => {
         status: 'in_progress',
       }),
     );
+  });
+
+  it('should not create check run or post comments if installationId is missing (public read-only)', async () => {
+    const checkRunId = await apiService.createCheckRun('owner', 'repo', 'sha123', undefined);
+    expect(checkRunId).toBeUndefined();
+    expect(mockOctokit.rest.checks.create).not.toHaveBeenCalled();
+
+    await apiService.postPullRequestComment('owner', 'repo', 42, 'Review summary', undefined);
+    expect(mockOctokit.rest.issues.createComment).not.toHaveBeenCalled();
   });
 });

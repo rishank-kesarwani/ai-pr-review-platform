@@ -50,17 +50,31 @@ export class ReviewsService {
 
     const repoFullName = `${parsed.owner}/${parsed.repo}`;
     const pullNumber = parsed.pullNumber;
+    const canonicalPrUrl = parsed.canonicalUrl;
 
     // Check existing repository doc or create placeholder
     let repoDoc = options.repositoryId
       ? await this.repoModel.findById(options.repositoryId)
       : await this.repoModel.findOne({ fullName: repoFullName });
 
+    const installationId = options.installationId || repoDoc?.installationId;
+    const reviewSource = installationId ? 'GITHUB_APP' : 'PUBLIC_PR_URL';
+    const githubWriteAccess = Boolean(installationId);
+
     // Check if an active review is already in progress
     const activeReview = await this.reviewModel.findOne({
       repoFullName,
       pullRequestNumber: pullNumber,
-      status: { $in: [ReviewStatus.QUEUED, ReviewStatus.FETCHING, ReviewStatus.ANALYZING, ReviewStatus.AI_REVIEW, ReviewStatus.AGGREGATING] },
+      status: {
+        $in: [
+          ReviewStatus.QUEUED,
+          ReviewStatus.FETCHING,
+          ReviewStatus.ANALYZING,
+          ReviewStatus.AI_REVIEW,
+          ReviewStatus.AGGREGATING,
+          ReviewStatus.PUBLISHING,
+        ],
+      },
     });
 
     if (activeReview) {
@@ -79,11 +93,18 @@ export class ReviewsService {
       pullRequestNumber: pullNumber,
       prTitle: options.prDetails?.title || `PR #${pullNumber} on ${repoFullName}`,
       prDescription: options.prDetails?.description || '',
-      prUrl: options.prUrl,
+      prUrl: canonicalPrUrl,
       author: options.prDetails?.author || 'unknown',
+      baseOwner: options.prDetails?.baseOwner || parsed.owner,
+      baseRepo: options.prDetails?.baseRepo || parsed.repo,
       baseBranch: options.prDetails?.baseBranch || 'main',
+      headOwner: options.prDetails?.headOwner,
+      headRepo: options.prDetails?.headRepo,
       headBranch: options.prDetails?.headBranch || 'head',
       commitSha,
+      isFork: options.prDetails?.isFork || false,
+      reviewSource,
+      githubWriteAccess,
       status: ReviewStatus.QUEUED,
       progressPercent: 0,
       currentStage: 'Queued',

@@ -13,6 +13,7 @@ export default function PrReviewForm() {
   const [error, setError] = useState<string | null>(null);
 
   const samplePrs = [
+    { label: 'System Design #13 (Public Fork)', url: 'https://github.com/karanpratapsingh/system-design/pull/13' },
     { label: 'React #28000', url: 'https://github.com/facebook/react/pull/28000' },
     { label: 'Next.js #60000', url: 'https://github.com/vercel/next.js/pull/60000' },
     { label: 'NestJS #13000', url: 'https://github.com/nestjs/nest/pull/13000' },
@@ -29,7 +30,12 @@ export default function PrReviewForm() {
       const review = await api.post<PullRequestReview>('/reviews', {
         prUrl: prUrl.trim(),
       });
-      router.push(`/reviews/${review._id}`);
+      const id = review.reviewId || review._id;
+      if (id) {
+        router.push(`/reviews/${id}`);
+      } else {
+        throw new Error('No review ID returned by server');
+      }
     } catch (err: any) {
       setError(
         err.response?.data?.message || err.message || 'Failed to submit Pull Request for review',

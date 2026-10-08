@@ -168,37 +168,120 @@ graph TD
 
 ---
 
-## 8. Request Flow
+## 8. Dual Review Modes: GitHub App vs Public PR URL
 
-1. Developer enters a GitHub PR URL (e.g. `https://github.com/owner/repo/pull/123`) on Dashboard or Chrome Extension.
-2. `POST /api/v1/reviews` validates URL structure and checks if an active review exists.
-3. A `PullRequestReview` record and `ReviewJob` record are created with initial status `QUEUED`.
-4. The job is placed on the BullMQ `pr-review` queue in Redis with exponential backoff configuration.
-5. The API immediately returns `201 Created` with review metadata.
-6. The client polls `GET /api/v1/reviews/:id` to receive real-time stage updates.
+The platform provides two clearly separated operational review modes:
 
----
-
-## 9. GitHub Webhook Flow
-
-1. GitHub sends `pull_request` event (`opened`, `reopened`, `synchronize`, `ready_for_review`).
-2. `GitHubWebhookGuard` validates `X-Hub-Signature-256` HMAC against `GITHUB_WEBHOOK_SECRET`.
-3. `GitHubWebhookService` computes the idempotency key: `gh:{repoFullName}:{prNumber}:{commitSha}:{action}`.
-4. If key exists in `WebhookEvent` collection, returns duplicate acknowledgement (`200 OK`) and exits.
-5. If new, registers repository, creates `QUEUED` review, and enqueues job to BullMQ.
+| Feature / Capability | Flow A: GitHub App / Webhook Mode | Flow B: Public GitHub PR URL Mode |
+|---|---|---|
+| **Trigger Source** | GitHub Webhook (`POST /api/v1/github/webhooks`) | Web Dashboard / Chrome Extension (`POST /api/v1/reviews`) |
+| **Target Repository** | Repositories with GitHub App installed (Public or Private) | Any Public GitHub repository or public fork |
+| **Authentication Requirement**| GitHub App Installation Token | None (Public GitHub REST API read access) |
+| **Review Source Badge** | `GitHub App — Connected` | `Public PR URL` |
+| **GitHub Write Access** | `Write: Connected` | `Write: Read-only` |
+| **GitHub Check Runs** | ✅ Created with line-level annotations | ❌ Skipped (Read-only on GitHub) |
+| **GitHub PR Comments** | ✅ Optional auto-summary comments | ❌ Skipped (Read-only on GitHub) |
+| **Static & AI Analysis** | ✅ Full AST & semantic review | ✅ Full AST & semantic review |
+| **Model Regression Gate** | ✅ Verified against calibrated baseline | ✅ Verified against calibrated baseline |
+| **Web UI Dashboard** | ✅ Live progress & interactive findings | ✅ Live progress & interactive findings |
 
 ---
 
-## 10. PR Review Pipeline
+## 9. Request Flows & Architectural Pipelines
+
+### Flow A: GitHub App / Webhook Mode
+
+```
+GitHub Repository (Installed App)
+    │
+    ▼ (pull_request opened / synchronize event)
+POST /api/v1/github/webhooks (HMAC-SHA256 verified)
+    │
+    ▼
+GitHubWebhookService (Idempotency check & repository registration)
+    │
+    ▼
+BullMQ Worker (Job dispatch)
+    │
+    ▼
+Fetch PR metadata & diff (Authenticated via Installation Token)
+    │
+    ▼
+Create in-progress GitHub Check Run
+    │
+    ▼
+Run Static AST Analysis (ESLint & TypeScript Rules)
+    │
+    ▼
+Run Context-Aware AI Review (Shared AI Platform)
+    │
+    ▼
+Arbitrate & Deduplicate Findings (SHA256 Fingerprint)
+    │
+    ▼
+Evaluate AI Model Regression Quality Gate (Model Regression Platform)
+    │
+    ▼
+Publish GitHub Check Run (Conclusion: success/failure + annotations)
+    │
+    ▼ (Optional if AUTO_COMMENT_ENABLED)
+Post GitHub Pull Request Comment
+    │
+    ▼
+Persist Review & Findings in MongoDB ──► Update Web UI Dashboard
+```
+
+### Flow B: Public GitHub PR URL Mode (e.g. `karanpratapsingh/system-design/pull/13`)
+
+```
+Developer pastes canonical public GitHub PR URL into Web Dashboard / Extension
+    │
+    ▼
+POST /api/v1/reviews (Strict URL validation & canonicalization)
+    │
+    ▼
+ReviewsService (Registers PUBLIC_PR_URL review mode with githubWriteAccess=false)
+    │
+    ▼
+BullMQ Worker (Job dispatch)
+    │
+    ▼
+Fetch public PR metadata & diff via GitHub REST API (Read-only, preserves base vs fork metadata)
+    │
+    ▼ (Check Runs strictly skipped)
+Run Static AST Analysis (ESLint & TypeScript Rules)
+    │
+    ▼
+Run Context-Aware AI Review (Shared AI Platform)
+    │
+    ▼
+Arbitrate & Deduplicate Findings (SHA256 Fingerprint)
+    │
+    ▼
+Evaluate AI Model Regression Quality Gate (Model Regression Platform)
+    │
+    ▼ (PR comments strictly skipped)
+Persist Review, Fork details, & Findings in MongoDB
+    │
+    ▼
+Web UI Dashboard displays review findings, metrics, and quality gate badges in real time
+```
+
+---
+
+## 10. PR Review Pipeline & Fork Handling
 
 ```
 [QUEUED] ──► [FETCHING] ──► [ANALYZING] ──► [AI_REVIEW] ──► [AGGREGATING] ──► [PUBLISHING] ──► [COMPLETED]
                 │                 │             │                │                │
             Fetch diff        ESLint & TS   AI Platform     Deduplicate &    GitHub Checks &
-            via GitHub         AST rules      Review          Calibrate       Notifications
+            (Base & Fork)      AST rules      Review          Calibrate       Notifications
+                                                                            (App mode only)
 ```
 
-- **Cancellation Checks:** The pipeline checks `job.isCancelled` between every stage, halting immediately if cancelled.
+- **Fork-Based PR Support:** The platform never assumes `head repository == base repository`. For fork PRs (such as `vbeskrovnov/system-design` targeting `karanpratapsingh/system-design`), the system captures `baseOwner`, `baseRepo`, `headOwner`, `headRepo`, `headSha`, and `isFork` directly from PR metadata and computes unified diffs accurately.
+- **Read-Only Guarantee:** When `installationId` is absent, GitHub write operations (Check Runs, PR Comments, label changes) are never attempted, preventing 401/403 errors and respecting repository boundaries.
+- **Cancellation Checks:** The pipeline inspects `job.isCancelled` between every stage, halting immediately if requested by the user.
 
 ---
 
