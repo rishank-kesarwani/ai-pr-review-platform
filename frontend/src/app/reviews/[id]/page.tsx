@@ -43,6 +43,7 @@ export default function ReviewDetailPage() {
   // Filters
   const [selectedSeverity, setSelectedSeverity] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedSource, setSelectedSource] = useState<string>('');
   const [fileSearch, setFileSearch] = useState<string>('');
 
   async function loadReview() {
@@ -101,7 +102,8 @@ export default function ReviewDetailPage() {
     setActionLoading(true);
     try {
       const newReview = await api.post<PullRequestReview>(`/reviews/${reviewId}/retry`);
-      router.push(`/reviews/${newReview._id}`);
+      const nextId = newReview.reviewId || newReview._id;
+      router.push(`/reviews/${nextId}`);
     } catch (e) {
       alert('Failed to retry review');
     } finally {
@@ -125,6 +127,7 @@ export default function ReviewDetailPage() {
   const filteredFindings = findings.filter((f) => {
     if (selectedSeverity && f.severity !== selectedSeverity) return false;
     if (selectedCategory && f.category !== selectedCategory) return false;
+    if (selectedSource && f.source !== selectedSource) return false;
     if (fileSearch && !f.file.toLowerCase().includes(fileSearch.toLowerCase())) return false;
     return true;
   });
@@ -154,18 +157,48 @@ export default function ReviewDetailPage() {
     );
   }
 
+  const isGitHubApp = review.reviewSource === 'GITHUB_APP' || Boolean(review.githubWriteAccess);
+  const isForkPr = Boolean(
+    review.isFork ||
+    (review.headOwner && review.baseOwner && review.headOwner.toLowerCase() !== review.baseOwner.toLowerCase())
+  );
+
   return (
     <div className="space-y-8">
       {/* Header Info Banner */}
       <div className="glass-panel rounded-2xl p-6 border border-dark-600 space-y-5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-mono text-xs text-brand-400 font-semibold">{review.repoFullName}</span>
               <span className="text-dark-400">•</span>
               <span className="font-mono text-xs text-white">PR #{review.pullRequestNumber}</span>
               <StatusBadge status={review.status} />
+
+              {/* Review Source Badge */}
+              {isGitHubApp ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  GitHub App — Connected
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                  Public PR URL
+                </span>
+              )}
+
+              {/* Integration Write Status Badge */}
+              {review.githubWriteAccess ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-950/40 text-emerald-300 border border-emerald-500/20">
+                  Write: Connected
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-dark-700/80 text-dark-300 border border-dark-600">
+                  Write: Read-only
+                </span>
+              )}
             </div>
+
             <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-tight">
               {review.prTitle || 'Pull Request Review'}
             </h1>
@@ -209,6 +242,21 @@ export default function ReviewDetailPage() {
           </div>
         </div>
 
+        {/* Public PR Read-Only Notice */}
+        {!review.githubWriteAccess && (
+          <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start sm:items-center justify-between gap-3 text-xs text-blue-300">
+            <div className="flex items-start sm:items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5 sm:mt-0" />
+              <span>
+                <strong>Public PR Review Mode:</strong> GitHub comments and check runs are unavailable because this repository is not connected to the GitHub App. All findings, AST analysis, and AI Model Regression checks are available below in read-only mode.
+              </span>
+            </div>
+            <span className="hidden sm:inline-block px-2.5 py-0.5 rounded bg-blue-500/20 text-[10px] uppercase font-bold text-blue-200 whitespace-nowrap">
+              Read-Only
+            </span>
+          </div>
+        )}
+
         {/* PR Meta Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-dark-700 text-xs text-dark-300">
           <div>
@@ -216,12 +264,17 @@ export default function ReviewDetailPage() {
             <span className="text-white font-medium">@{review.author || 'unknown'}</span>
           </div>
           <div>
-            <span className="text-dark-400 block text-[10px] uppercase font-semibold">Branches</span>
-            <div className="flex items-center gap-1 font-mono text-[11px] text-white">
-              <GitBranch className="w-3 h-3 text-brand-400" />
+            <span className="text-dark-400 block text-[10px] uppercase font-semibold">
+              {isForkPr ? 'Fork Branches' : 'Branches'}
+            </span>
+            <div className="flex items-center gap-1 font-mono text-[11px] text-white truncate" title={isForkPr ? `${review.headOwner || 'fork'}:${review.headBranch} → ${review.baseBranch}` : `${review.baseBranch} ← ${review.headBranch}`}>
+              <GitBranch className="w-3 h-3 text-brand-400 flex-shrink-0" />
               <span>{review.baseBranch}</span>
               <span className="text-dark-400">←</span>
-              <span>{review.headBranch}</span>
+              <span>
+                {isForkPr && review.headOwner ? `${review.headOwner}:` : ''}
+                {review.headBranch}
+              </span>
             </div>
           </div>
           <div>
@@ -470,7 +523,7 @@ export default function ReviewDetailPage() {
 
       {/* Findings Explorer */}
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="space-y-1">
             <h2 className="text-lg font-bold text-white">
               Code Review Findings ({filteredFindings.length})
@@ -478,8 +531,37 @@ export default function ReviewDetailPage() {
             <p className="text-xs text-dark-300">Deduplicated and calibrated static & AI analysis results</p>
           </div>
 
-          {/* Search by filename */}
-          <div className="flex items-center gap-2">
+          {/* Filters & Search */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Category Filter */}
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="bg-dark-800 border border-dark-600 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-brand-500"
+            >
+              <option value="">All Categories</option>
+              {Array.from(new Set(findings.map((f) => f.category))).map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+
+            {/* Source Filter */}
+            <select
+              value={selectedSource}
+              onChange={(e) => setSelectedSource(e.target.value)}
+              className="bg-dark-800 border border-dark-600 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-brand-500"
+            >
+              <option value="">All Sources</option>
+              {Array.from(new Set(findings.map((f) => f.source))).map((src) => (
+                <option key={src} value={src}>
+                  {src}
+                </option>
+              ))}
+            </select>
+
+            {/* Search by filename */}
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-dark-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -490,6 +572,20 @@ export default function ReviewDetailPage() {
                 className="bg-dark-800 border border-dark-600 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-dark-400 focus:outline-none focus:border-brand-500"
               />
             </div>
+
+            {(selectedSeverity || selectedCategory || selectedSource || fileSearch) && (
+              <button
+                onClick={() => {
+                  setSelectedSeverity('');
+                  setSelectedCategory('');
+                  setSelectedSource('');
+                  setFileSearch('');
+                }}
+                className="px-2 py-1 text-xs text-dark-300 hover:text-white bg-dark-800 border border-dark-600 rounded-lg transition-colors"
+              >
+                Clear
+              </button>
+            )}
           </div>
         </div>
 

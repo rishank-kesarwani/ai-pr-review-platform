@@ -75,25 +75,81 @@ describe('ReviewsService', () => {
     await expect(
       service.enqueueReview({ prUrl: 'https://invalid-url.com' }),
     ).rejects.toThrow(BadRequestException);
+
+    await expect(
+      service.enqueueReview({ prUrl: 'https://github.com/facebook/react/issues/123' }),
+    ).rejects.toThrow(BadRequestException);
+
+    await expect(
+      service.enqueueReview({ prUrl: 'https://github.com/facebook/react/pull/-1' }),
+    ).rejects.toThrow(BadRequestException);
   });
 
-  it('should enqueue valid public PR review successfully', async () => {
+  it('should enqueue valid public PR review successfully in PUBLIC_PR_URL mode', async () => {
     mockReviewModel.findOne.mockResolvedValue(null);
-    mockRepoModel.findOne.mockResolvedValue({ _id: 'repo-123' });
-    mockReviewModel.create.mockResolvedValue({
+    mockRepoModel.findOne.mockResolvedValue(null); // No installation connected
+    mockReviewModel.create.mockImplementation((doc: any) => Promise.resolve({
       _id: 'review-123',
+      ...doc,
+    }));
+
+    const result = await service.enqueueReview({
+      prUrl: 'https://github.com/karanpratapsingh/system-design/pull/13',
+    });
+
+    expect(result.status).toBe(ReviewStatus.QUEUED);
+    expect(mockReviewModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repoFullName: 'karanpratapsingh/system-design',
+        pullRequestNumber: 13,
+        reviewSource: 'PUBLIC_PR_URL',
+        githubWriteAccess: false,
+      }),
+    );
+    expect(mockJobModel.create).toHaveBeenCalled();
+    expect(mockQueue.add).toHaveBeenCalled();
+  });
+
+  it('should enqueue review in GITHUB_APP mode when installation exists', async () => {
+    mockReviewModel.findOne.mockResolvedValue(null);
+    mockRepoModel.findOne.mockResolvedValue({ _id: 'repo-app-123', installationId: 9988 });
+    mockReviewModel.create.mockImplementation((doc: any) => Promise.resolve({
+      _id: 'review-app-123',
+      ...doc,
+    }));
+
+    const result = await service.enqueueReview({
       prUrl: 'https://github.com/facebook/react/pull/12345',
+      installationId: 9988,
+    });
+
+    expect(mockReviewModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repoFullName: 'facebook/react',
+        pullRequestNumber: 12345,
+        reviewSource: 'GITHUB_APP',
+        githubWriteAccess: true,
+      }),
+    );
+  });
+
+  it('should return active review if one is already in progress without starting duplicate', async () => {
+    const existingActiveReview = {
+      _id: 'active-review-555',
       repoFullName: 'facebook/react',
       pullRequestNumber: 12345,
-      status: ReviewStatus.QUEUED,
-    });
+      status: ReviewStatus.AI_REVIEW,
+      prUrl: 'https://github.com/facebook/react/pull/12345',
+    };
+    mockReviewModel.findOne.mockResolvedValue(existingActiveReview);
 
     const result = await service.enqueueReview({
       prUrl: 'https://github.com/facebook/react/pull/12345',
     });
 
-    expect(result.status).toBe(ReviewStatus.QUEUED);
-    expect(mockJobModel.create).toHaveBeenCalled();
-    expect(mockQueue.add).toHaveBeenCalled();
+    expect(result._id).toBe('active-review-555');
+    expect(result.status).toBe(ReviewStatus.AI_REVIEW);
+    expect(mockReviewModel.create).not.toHaveBeenCalled();
+    expect(mockQueue.add).not.toHaveBeenCalled();
   });
 });

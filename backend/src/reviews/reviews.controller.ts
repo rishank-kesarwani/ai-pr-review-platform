@@ -31,11 +31,26 @@ export class ReviewsController {
     @Body() dto: CreateReviewDto,
     @CurrentUser('userId') userId?: string,
   ) {
-    return this.reviewsService.enqueueReview({
+    const review = await this.reviewsService.enqueueReview({
       prUrl: dto.prUrl,
       userId,
       triggeredBy: userId ? 'MANUAL' : 'EXTENSION_OR_GUEST',
     });
+
+    const reviewObj = (review as any).toObject ? (review as any).toObject() : review;
+    return {
+      reviewId: review._id.toString(),
+      _id: review._id.toString(),
+      status: review.status,
+      prUrl: review.prUrl,
+      repository: review.repoFullName,
+      repoFullName: review.repoFullName,
+      pullRequestNumber: review.pullRequestNumber,
+      reviewSource: review.reviewSource || 'PUBLIC_PR_URL',
+      githubWriteAccess: Boolean(review.githubWriteAccess),
+      message: 'PR review queued successfully',
+      ...reviewObj,
+    };
   }
 
   @Public()
