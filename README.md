@@ -147,8 +147,6 @@ graph TD
     Worker -->|Dispatch Alerts| NotifService
     Frontend -->|Poll / Stream Status| Backend
     Backend -->|Read State| MongoDB
-``` Status| Backend
-    Backend -->|Read State| MongoDB
 ```
 
 ---
