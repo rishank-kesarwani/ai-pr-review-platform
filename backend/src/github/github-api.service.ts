@@ -150,6 +150,12 @@ export class GitHubApiService {
       this.logger.error(
         `Failed to list files for PR ${owner}/${repo}#${pullNumber}: ${error.message}`,
       );
+      if (error.status === 403) {
+        throw new HttpException(
+          `GitHub API rate limit exceeded. Configure GITHUB_TOKEN or install the GitHub App to increase the rate limit from 60 to 5,000 requests/hour.`,
+          HttpStatus.FORBIDDEN,
+        );
+      }
       throw new HttpException(
         `Failed to fetch PR files from GitHub: ${error.message}`,
         HttpStatus.BAD_GATEWAY,
