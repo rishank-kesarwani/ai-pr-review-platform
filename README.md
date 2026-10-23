@@ -633,6 +633,39 @@ Internet
 - **Output Directory:** `.next`
 - **Environment Variables:** `NEXT_PUBLIC_API_URL=https://<your-backend-render-url>`, `NEXT_PUBLIC_ACCESS_ENABLED=true`
 
+### 30.1 Vercel Image Optimization Architecture & Quota Protection
+
+Vercel provides an included allowance of **5,000 image transformations per month**. Exceeding this limit causes requests through `/_next/image` to return HTTP `402 Payment Required` or `500 Internal Server Error`, breaking images across the frontend.
+
+To prevent quota exhaustion while preserving Core Web Vitals, accessibility, and visual quality, the frontend implements a zero-waste image delivery architecture:
+
+#### 1. Transformation Variant Reduction (56% Variant Avoidance)
+* **Default Next.js Behavior:** Next.js defaults to 8 `deviceSizes` (`[640, 750, 828, 1080, 1200, 1920, 2048, 3840]`) and 8 `imageSizes` (`[16, 32, 48, 64, 96, 128, 256, 384]`), allowing up to 16 transformation variants for a single source asset across different viewports and pixel densities.
+* **Hardened Configuration (`frontend/next.config.js`):**
+  - `deviceSizes: [640, 1080, 1920]` (Constrained to 3 responsive targets: Mobile, Tablet/Laptop, Desktop).
+  - `imageSizes: [32, 64, 128, 256]` (Constrained to 4 essential UI/thumbnail dimensions).
+  - `formats: ['image/avif', 'image/webp']` (High-efficiency modern compression).
+  - **Result:** Cuts variant explosion from 16 possible widths down to 7 (a **56% reduction** in potential transformation variants per image).
+
+#### 2. CDN Cache Eviction Prevention (1-Year TTL)
+* Next.js default `minimumCacheTTL` is **60 seconds**. After 60 seconds without traffic, cached images on Vercel's Edge CDN expire and subsequent requests trigger brand-new transformations against the monthly quota.
+* **Enforced Setting:** `minimumCacheTTL: 31536000` (1 year / 365 days). Transformed variants remain permanently warm on Vercel's global Edge CDN, eliminating cache churn.
+* **Static Assets Cache Headers:** Public vector assets (`.svg`, `.ico`, `.png`, `.webp`, `.avif`) are served with `Cache-Control: public, max-age=86400, stale-while-revalidate=604800`.
+
+#### 3. Selective Bypass via `OptimizedImage` Component
+The frontend provides a resilient `<OptimizedImage />` component ([`frontend/src/components/OptimizedImage.tsx`](file:///Users/rishankkesharwani/Documents/Personal/ai-pr-review-platform/frontend/src/components/OptimizedImage.tsx)) that:
+* **Enforces `unoptimized={true}` for Vectors & SVGs:** SVGs are vector-native and gain zero byte-saving benefits from raster resizing; transforming them wastes quota.
+* **Enforces `unoptimized={true}` for Small Icons (`<= 64px`):** Icons and avatars already sized under 64px bypass Vercel's optimizer.
+* **Bypasses Pre-Optimized External CDNs:** GitHub user avatars (`avatars.githubusercontent.com`) are already pre-scaled and served via GitHub's CDN (`?s=64`), bypassing Vercel completely.
+* **Automatic Quota Failure Recovery:** If a Vercel-transformed image fails with HTTP 402/403/500 (e.g. quota exhausted), the component automatically catches the error and retries with a direct unoptimized fetch.
+* **Layout-Stable Placeholders:** If an image fails to load entirely, it renders an accessible fallback placeholder with explicit width/height to eliminate Cumulative Layout Shift (CLS).
+
+#### 4. Developer Guidelines for Adding New Assets
+1. **Vector & Icon Assets:** Always place SVGs in `frontend/public/` or render them via Lucide React / inline React SVGs (like `Logo.tsx`). Never run SVGs through `next/image` without `unoptimized={true}`.
+2. **Raster Images & Photography:** When adding photography or screenshots, use `<OptimizedImage />`. For images with known fixed dimensions, always provide exact `width` and `height`.
+3. **Hero & Banner Images:** Specify explicit responsive `sizes` (e.g., `sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"`) to prevent mobile viewports from requesting 1920px variants.
+4. **Third-Party Images:** If introducing new external image domains, add them under `remotePatterns` in `frontend/next.config.js` and prefer passing `unoptimized` if the remote host already provides dynamic resizing (e.g., Cloudinary, GitHub, Imgix).
+
 ---
 
 ## 32. Environment Variables
